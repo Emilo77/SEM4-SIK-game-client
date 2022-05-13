@@ -1,17 +1,23 @@
 #ifndef ZADANIE02_CLIENT_H
 #define ZADANIE02_CLIENT_H
 
+#include "Buffer.h"
 #include "ClientParameters.h"
+#include "GameInfo.h"
 #include "Utils.h"
-
 
 class Client {
 private:
 	ClientParameters parameters;
+	Buffer buffer;
+	GameInfo gameInfo;
+
 public:
 	explicit Client(ClientParameters &parameters) : parameters(parameters) {}
 
-	DrawMessage handle_received_message();
+	ServerMessage handle_message_from_server();
+
+	DrawMessage handle_message_from_display();
 
 	void initialize();
 

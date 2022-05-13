@@ -3,4 +3,4 @@ project(Zadanie02_client)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(Zadanie02_client Buffer.cpp ClientParameters.cpp Client.cpp)
+add_executable(Zadanie02_client Buffer.cpp ClientParameters.cpp Client.cpp GameInfo.cpp)

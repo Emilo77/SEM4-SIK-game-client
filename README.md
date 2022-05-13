@@ -97,7 +97,7 @@ Należy wyłączyć algorytm Nagle'a (tzn. ustawić flagę TCP_NODELAY).
 ### 2.1. Komunikaty od klienta do serwera
 
 ```cpp
-enum ClientMessage {
+enum ClientMessageToServer {
     [0] Join { name: String },
     [1] PlaceBomb,
     [2] PlaceBlock,

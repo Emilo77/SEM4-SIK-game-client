@@ -23,10 +23,10 @@ private:
 
 public:
 	std::string display_address; //może potem zamienić na inny typ
+	std::string server_address;
 	bool help_enabled{false};
 	std::string player_name;
 	uint16_t port{0};
-	std::string server_address;
 
 	ClientParameters(int argc, char *argv[]) : argc(argc), argv(argv) {
 		check_parameters();
