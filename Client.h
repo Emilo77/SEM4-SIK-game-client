@@ -15,9 +15,9 @@ private:
 public:
 	explicit Client(ClientParameters &parameters) : parameters(parameters) {}
 
-	ServerMessageToClient handle_message_from_server();
+	void handle_message_from_server();
 
-	DisplayMessageToClient handle_message_from_display();
+	void handle_message_from_display();
 
 	void initialize();
 

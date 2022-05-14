@@ -286,13 +286,13 @@ void Buffer::receive_from_display(std::optional<DisplayMessageToClient> &message
 	reset_read_index();
 	uint8_t message_type;
 	receive(message_type);
-	if (message_type > MAX_DISPLAY_INPUT_TYPE) {
+	if (invalid_display_message_type(message_type)) {
 		return;
 	}
 	if (message_type == DisplayMessageToClientType::MoveDisplay) {
 		uint8_t direction;
 		receive(direction);
-		if (direction > MAX_DIRECTION_TYPE) {
+		if (invalid_direction(direction)) {
 			return;
 		}
 		message->direction = (Direction) direction;

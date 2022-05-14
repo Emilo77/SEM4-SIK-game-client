@@ -29,6 +29,13 @@ private:
 	std::list<Bomb> bombs;
 	std::list<Position> explosions;
 	std::map<player_id_t, score_t> scores;
+
+public:
+	void apply_changes_from_display(DisplayMessageToClient &msg);
+
+	void apply_changes_from_server(ServerMessageToClient &msg);
+
+
 };
 
 
