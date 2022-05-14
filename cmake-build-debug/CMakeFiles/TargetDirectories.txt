@@ -1,3 +1,0 @@
-/home/emilo77/CLionProjects/SIK/Zadanie02_client/cmake-build-debug/CMakeFiles/Zadanie02_client.dir
-/home/emilo77/CLionProjects/SIK/Zadanie02_client/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/emilo77/CLionProjects/SIK/Zadanie02_client/cmake-build-debug/CMakeFiles/rebuild_cache.dir
