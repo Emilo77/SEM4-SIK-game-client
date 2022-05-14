@@ -7,6 +7,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <variant>
 
 using player_id_t = uint8_t;
 using bomb_id_t = uint32_t;
@@ -90,79 +91,82 @@ public:
 	bool operator<(const Bomb &rhs) const { return bomb_id < rhs.bomb_id; }
 };
 
-union ReceivedServerMessageUnion {
-	struct {
-		std::string server_name;
-		uint8_t players_count;
-		uint16_t size_x;
-		uint16_t size_y;
-		uint16_t game_length;
-		uint16_t explosion_radius;
-		uint16_t bomb_timer;
-	} Hello;
-
-	struct {
-		player_id_t player_id;
-		Player player;
-	} AcceptedPlayer;
-
-	struct {
-		std::map<player_id_t, Player> players;
-	} GameStarted;
-
-	struct {
-		uint16_t turn;
-		std::list<Event> events;
-	} Turn;
-
-	struct {
-		std::map<player_id_t, score_t> scores;
-	} GameEnded;
+struct Hello {
+	std::string server_name;
+	uint8_t players_count;
+	uint16_t size_x;
+	uint16_t size_y;
+	uint16_t game_length;
+	uint16_t explosion_radius;
+	uint16_t bomb_timer;
 };
+
+struct AcceptedPlayer {
+	player_id_t player_id{};
+	Player player{};
+};
+
+struct GameStarted {
+	std::map<player_id_t, Player> players;
+};
+
+struct Turn {
+	uint16_t turn;
+	std::list<Event> events;
+};
+
+struct GameEnded {
+	std::map<player_id_t, score_t> scores;
+};
+
+
+struct Lobby {
+	std::string server_name;
+	uint8_t players_count;
+	uint16_t size_x;
+	uint16_t size_y;
+	uint16_t game_length;
+	uint16_t explosion_radius;
+	uint16_t bomb_timer;
+	std::map<player_id_t, Player> players;
+};
+
+struct GamePlay {
+	std::string server_name;
+	uint16_t size_x;
+	uint16_t size_y;
+	uint16_t game_length;
+	uint16_t turn;
+	std::map<player_id_t, Player> players;
+	std::map<player_id_t, Position> player_positions;
+	std::list<Position> blocks;
+	std::list<Bomb> bombs;
+	std::list<Position> explosions;
+	std::map<player_id_t, score_t> scores;
+};
+
 
 struct ServerMessageToClient {
 	ServerMessageToClientType type;
-	ReceivedServerMessageUnion data;
+	std::variant<struct Hello, struct AcceptedPlayer,
+	             struct GameStarted, struct Turn, struct GameEnded>
+	        data;
 };
-
-
-
-union DrawMessageUnion {
-	struct {
-		std::string server_name;
-		uint8_t players_count;
-		uint16_t size_x;
-		uint16_t size_y;
-		uint16_t game_length;
-		uint16_t explosion_radius;
-		uint16_t bomb_timer;
-		std::map<player_id_t, Player> players;
-	} Lobby;
-
-	struct {
-		std::string server_name;
-		uint16_t size_x;
-		uint16_t size_y;
-		uint16_t game_length;
-		uint16_t turn;
-		std::map<player_id_t, Player> players;
-		std::map<player_id_t, Position> player_positions;
-		std::list<Position> blocks;
-		std::list<Bomb> bombs;
-		std::list<Position> explosions;
-		std::map<player_id_t, score_t> scores;
-	} Gameplay;
-};
-
-struct ClientMessageToDisplay {
-	GameState state;
-	DrawMessageUnion data;
-};
-
 
 struct DisplayMessageToClient {
 	DisplayMessageToClientType type;
 	Direction direction;
+};
+
+struct ClientMessageToServer {
+	ClientMessageToServerType type;
+	std::variant<std::string, Direction> data;
+};
+
+
+struct ClientMessageToDisplay {
+	GameState state;
+	std::variant<struct Lobby, struct GamePlay> data;
 };
 
 

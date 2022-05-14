@@ -67,27 +67,28 @@ private:
 	void send_move(Direction direction);
 
 	// RECEIVING FROM SERVER
-	void receive_hello(ReceivedServerMessageUnion &message);
-	void receive_accepted_player(ReceivedServerMessageUnion &message);
-	void receive_game_started(ReceivedServerMessageUnion &message);
-	void receive_turn(ReceivedServerMessageUnion &message);
-	void receive_game_ended(ReceivedServerMessageUnion &message);
+	size_t receive_hello(struct Hello &message);
+	size_t receive_accepted_player(struct AcceptedPlayer &message);
+	size_t receive_game_started(struct GameStarted &message);
+	size_t receive_turn(struct Turn &message);
+	size_t receive_game_ended(struct GameEnded &message);
 
 	// SENDING TO DISPLAY
-	void send_lobby(DrawMessageUnion &message);
-	void send_game(DrawMessageUnion &message);
+	void send_lobby(struct Lobby &message);
+	void send_game(struct GamePlay &message);
 
 public:
-	size_t send_to_server(ClientMessageToServerType clientMessage,
-	                      std::string name = std::string(), Direction direction = {});
-
-	void receive_from_server(std::optional<ServerMessageToClient> &serverMessage);
+	size_t send_to_server(ClientMessageToServer &message);
 
 	size_t send_to_display(ClientMessageToDisplay &drawMessage);
 
-	void receive_from_display(std::optional<DisplayMessageToClient> &message);
+	std::optional<ServerMessageToClient> receive_from_server(size_t length);
 
-	size_t get_size() const { return send_index; }
+	std::optional<DisplayMessageToClient> receive_from_display(size_t length);
+
+	size_t get_send_size() const { return send_index; }
+
+	size_t get_read_size() const { return read_index; }
 
 	char get_message_id() { return buffer[0]; }
 
