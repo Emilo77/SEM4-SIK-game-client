@@ -1,3 +1,47 @@
+# Bombowe roboty
+
+Pytania proszę wysyłać na adres agluszak@mimuw.edu.pl.
+
+Historia zmian:
+- **13.05.2022** - zmiana display na gui, dodanie pytań
+- **10.05.2022** - doprecyzowanie jak identyfikowani są klienci
+- **09.05.2022** - poprawki w GUI, nowe pytania w FAQ
+- **08.05.2022** - doprecyzowanie jak obliczać wybuch kilku bomb, zmiana generatora liczb losowych, zmiana flag kompilatora
+
+## 0. Dostarczone programy
+
+Do uruchomienia programów potrzeba [kompilatora Rusta](https://rustup.rs/), a także pewnych [bibliotek systemowych](https://github.com/bevyengine/bevy/blob/main/docs/linux_dependencies.md).
+
+Po zainstalowaniu kompilatora należy wykonać komendę:
+`cargo run --bin <gui/verifier>` i uzupełnić parametry.
+
+Skompilowany serwer (bynajmniej nie wzorcowy) jest dostępny [tutaj](https://students.mimuw.edu.pl/~agluszak/server). Został on skompilowany na maszynie `students`. Aby wyświetlały się komunikaty, należy uruchomić go ze zmienną środowiskową `RUST_LOG=debug`.
+
+### 0.1. GUI
+
+Interfejs graficzny dla gry Bombowe Roboty.
+GUI prawdopodobnie będzie jeszcze aktualizowane.
+
+#### Sterowanie
+
+```
+W, strzałka w górę -  porusza robotem w górę.
+S, strzałka w dół - porusza robotem w dół.
+A, strzałka w lewo - porusza robotem w lewo.
+D, strzałka w prawo - porusza robotem w prawo.
+Spacja, J, Z - kładzie bombę.
+K, X - blokuje pole.
+```
+
+### 0.2. Weryfikator
+
+Ten program pozwala sprawdzić, czy wiadomości są poprawnie serializowane.
+Innymi słowy, jest to wzorcowy deserializator. Można łączyć się z nim zarówno po TCP, jak i UDP (z parametrem `-u`).
+Przy uruchamianiu należy podać, jakiego rodzaju wiadomości mają być sprawdzane.
+
+Przykładowo, jeśli chcemy sprawdzić, czy klient wysyła prawidłowe wiadomości do serwera, wykonać:
+`cargo run --bin verifier -- -p <port, na którym klient myśli, że serwer nasłuchuje> -m client`
+
 ## 1. Gra Bombowe roboty
 
 ### 1.1. Zasady gry
@@ -35,18 +79,20 @@ potrzeby klientom.
 
 Klient komunikuje się z serwerem gry oraz interfejsem użytkownika.
 
+Zarówno klient jak i serwer mogą być wielowątkowe.
+
 Specyfikacje protokołów komunikacyjnych, rodzaje zdarzeń oraz formaty
 komunikatów i poleceń są opisane poniżej.
 
 ### 1.3. Parametry wywołania programów
 
 Serwer:
-```console
+```
     -b, --bomb-timer <u16>
     -c, --players-count <u8>
     -d, --turn-duration <u64, milisekundy>
     -e, --explosion-radius <u16>
-    -h, --help_enabled                                   Print help_enabled information
+    -h, --help                                   Wypisuje jak używać programu
     -k, --initial-blocks <u16>
     -l, --game-length <u16>
     -n, --server-name <String>
@@ -57,19 +103,19 @@ Serwer:
 ```
 
 Klient:
-```console
-    -d, --display-address <(nazwa hosta):(port) lub (IPv4):(port) lub (IPv6):(port)>
-    -h, --help_enabled                                 Print help_enabled information
+```
+    -d, --gui-address <(nazwa hosta):(port) lub (IPv4):(port) lub (IPv6):(port)>
+    -h, --help                                 Wypisuje jak używać programu
     -n, --player-name <String>
-    -p, --port <u16>
+    -p, --port <u16>                           Port na którym klient nasłuchuje komunikatów od GUI
     -s, --server-address <(nazwa hosta):(port) lub (IPv4):(port) lub (IPv6):(port)>
 ```
 
 Interfejs graficzny:
 ```
     -c, --client-address <(nazwa hosta):(port) lub (IPv4):(port) lub (IPv6):(port)>
-    -h, --help_enabled                               Print help_enabled information
-    -p, --port <u16>
+    -h, --help                               Wypisuje jak używać programu
+    -p, --port <u16>                         Port na którym GUI nasłuchuje komunikatów od klienta
 ```
 
 Do parsowania parametrów linii komend można użyć funkcji `getopt`
@@ -96,18 +142,18 @@ Należy wyłączyć algorytm Nagle'a (tzn. ustawić flagę TCP_NODELAY).
 
 ### 2.1. Komunikaty od klienta do serwera
 
-```cpp
-enum ClientMessageToServer {
-    [0] Join { name: String },
-    [1] PlaceBomb,
-    [2] PlaceBlock,
-    [3] Move { direction: Direction },
+```
+enum ClientMessage {
+    [0] JoinServer { name: String },
+    [1] PlaceBombServer,
+    [2] PlaceBlockServer,
+    [3] MoveServer { direction: Direction },
 }
 ```
 
 Typ Direction ma następującą reprezentację binarną:
 
-```cpp
+```
 enum Direction {
     [0] Up,
     [1] Right,
@@ -116,10 +162,10 @@ enum Direction {
 }
 ```
 
-Wiadomość od klienta `Join(“Żółć!”)` zostanie zserializowana jako ciąg bajtów
+Wiadomość od klienta `JoinServer(“Żółć!”)` zostanie zserializowana jako ciąg bajtów
 `[0, 9, 197, 187, 195, 179, 197, 130, 196, 135, 33]`, gdzie:
 
-```console
+```
 0 - rodzaj wiadomości
 9 - długość napisu
 197, 187 - 'Ż'
@@ -129,23 +175,23 @@ Wiadomość od klienta `Join(“Żółć!”)` zostanie zserializowana jako cią
 33 - '!'
 ```
 
-Natomiast wiadomość `Join(“👩🏼‍👩🏼‍👧🏼‍👦🏼🇵🇱”)` zostanie zserializowana jako ciąg bajtów
+Natomiast wiadomość `JoinServer(“👩🏼‍👩🏼‍👧🏼‍👦🏼🇵🇱”)` zostanie zserializowana jako ciąg bajtów
 `[0, 49, 240, 159, 145, 169, 240, 159, 143, 188, 226, 128, 141, 240, 159, 145, 169, 240, 159, 143, 188, 226, 128, 141, 240, 159, 145, 167, 240, 159, 143, 188, 226, 128, 141, 240, 159, 145, 166, 240, 159, 143, 188, 240, 159, 135, 181, 240, 159, 135, 177]`.
 
-Wiadomość `Move(Down)` zserializowana zostanie jako ciąg bajtów `[3, 2]`.
+Wiadomość `MoveServer(Down)` zserializowana zostanie jako ciąg bajtów `[3, 2]`.
 
 
 
 Klient po podłączeniu się do serwera zaczyna obserwować rozgrywkę, jeżeli ta jest w toku.
-W przeciwnym razie może zgłosić chęć wzięcia w niej udziału, wysyłając komunikat `Join`. 
+W przeciwnym razie może zgłosić chęć wzięcia w niej udziału, wysyłając komunikat `JoinServer`.
 
-Serwer ignoruje komunikaty `Join` wysłane w trakcie rozgrywki. Serwer ignoruje również komunikaty typu innego niż `Join` w `Lobby`.
+Serwer ignoruje komunikaty `JoinServer` wysłane w trakcie rozgrywki. Serwer ignoruje również komunikaty typu innego niż `JoinServer` w `Lobby`.
 
 
 ### 2.2. Komunikaty od serwera do klienta
 
-```cpp
-enum ServerMessage {
+```
+enum ServerMessageToClient {
     [0] Hello {
         server_name: String,
         players_count: u8,
@@ -175,8 +221,8 @@ enum ServerMessage {
 
 Wiadomość od serwera typu `Turn`
 
-```cpp
-ServerMessage::Turn {
+```
+ServerMessageToClient::Turn {
         turn: 44,
         events: [
             Event::PlayerMoved {
@@ -196,7 +242,7 @@ ServerMessage::Turn {
 
 będzie miała następującą reprezentację binarną:
 
-```console
+```
 [3, 0, 44, 0, 0, 0, 3, 2, 3, 0, 2, 0, 4, 2, 4, 0, 3, 0, 5, 0, 0, 0, 0, 5, 0, 5, 0, 7]
 
 3 - rodzaj wiadomości od serwera (`Turn`)
@@ -227,6 +273,7 @@ Dostarczymy program do weryfikowania poprawności danych.
     [3] BlockPlaced { position: Position },
 
     BombId: u32
+    Bomb: { position: Position, timer: u16 },
     PlayerId: u8
     Position: { x: u16, y: u16 }
     Player: { name: String, address: String }
@@ -235,6 +282,31 @@ Dostarczymy program do weryfikowania poprawności danych.
 Pole `address` w strukturze `Player` może reprezentować zarówno adres IPv4, jak i adres IPv6.
 
 Liczba typu `Score` informuje o tym, ile razy robot danego gracza został zniszczony.
+
+
+### 2.4. Generator liczb losowych
+
+Do wytwarzania wartości losowych należy użyć poniższego deterministycznego
+generatora liczb 32-bitowych. Kolejne wartości zwracane przez ten generator
+wyrażone są wzorem:
+
+    r_0 = (seed * 48271) mod 2147483647
+    r_i = (r_{i-1} * 48271) mod 2147483647
+
+
+gdzie wartość `seed` jest 32-bitowa i jest przekazywana do serwera za pomocą
+parametru `-s`. Jeśli ten parametr nie jest zdefiniowany, można jako wartości 
+domyślnej użyć dowolnej liczby, która będzie zmieniać się przy każdym uruchomieniu, np. 
+`unsigned seed = time(NULL)` (C) 
+lub `unsigned seed = std::chrono::system_clock::now().time_since_epoch().count()` (C++).
+
+Powyższy generator odpowiada generatorowi `std::minstd_rand`.
+
+Należy użyć dokładnie takiego generatora, żeby umożliwić automatyczne testowanie
+rozwiązania (uwaga na konieczność wykonywania pośrednich obliczeń na typie
+64-bitowym).
+
+Przykłady użycia generatora zostały podane w plikach `c/random.c` oraz `cpp/random.cpp`.
 
 ### 2.5. Stan gry
 
@@ -258,9 +330,11 @@ Oraz tylko w przypadku toczącej się rozgrywki:
 Lewy dolny róg planszy ma współrzędne `(0, 0)`, odcięte rosną w prawo,
 a rzędne w górę.
 
+Klient powinien przechowywać zagregowany stan tak, aby móc wysyłać komunikaty do GUI. W szczególności klient powinien pamiętać, ile razy dany robot został zniszczony (aby móc wysłać tę informację w polu `scores`).
+
 ### 2.6. Podłączanie i odłączanie klientów
 
-Klient wysyła komunikat `Join` do serwera po otrzymaniu dowolnego (poprawnego) komunikatu od GUI, o ile klient jest w stanie `Lobby` (tzn. nie otrzymał od serwera komunikatu `GameStarted`.
+Klient wysyła komunikat `JoinServer` do serwera po otrzymaniu dowolnego (poprawnego) komunikatu od GUI, o ile klient jest w stanie `Lobby` (tzn. nie otrzymał od serwera komunikatu `GameStarted`).
 
 Po podłączeniu klienta do serwera serwer wysyła do niego komunikat `Hello`.
 Jeśli rozgrywka jeszcze nie została rozpoczęta,
@@ -268,11 +342,12 @@ serwer wysyła komunikaty `AcceptedPlayer` z informacją o podłączonych gracza
 Jeśli rozgrywka już została rozpoczęta, serwer wysyła komunikat `GameStarted` z informacją o rozpoczęciu rozgrywki,
 a następnie wysyła komunikat `Turn` z informacją o aktualnym stanie gry. Numer tury w takim komunikacie to 0.
 
-Jeśli rozgrywka nie jest jeszcze rozpoczęta, to wysłanie przez klienta komunikatu `Join`
+Jeśli rozgrywka nie jest jeszcze rozpoczęta, to wysłanie przez klienta komunikatu `JoinServer`
 powoduje dodanie go do listy graczy. Serwer następnie rozsyła do wszystkich klientów komunikat `AcceptedPlayer`.
 
-Graczom nadawane jest ID w kolejności podłączenia (tzn. odebrania komunikatu `Join` przez serwer). Gracze rozpoznawani są po adresie IP i numerze portu.
+Graczom nadawane jest ID w kolejności podłączenia (tzn. odebrania komunikatu `JoinServer` przez serwer). 
 Dwoje graczy może mieć taką samą nazwę.
+Ponieważ klienci łączą się z serwerem po TCP, wiadomo który komunikat przychodzi od którego klienta.
 
 Odłączenie gracza w trakcie rozgrywki powoduje tylko tyle, że jego robot przestaje się ruszać.
 Odłączenie klienta-gracza przed rozpoczęciem rozgrywki nie powoduje skreślenia go z listy graczy.
@@ -285,7 +360,7 @@ jest wyspecyfikowane przy uruchomieniu serwera.
 
 Inicjacja stanu gry przebiega następująco:
 
-```console
+```
 nr_tury = 0
 zdarzenia = []
 
@@ -317,7 +392,7 @@ Zasady:
 - Gracze mogą położyć bombę, nawet jeśli stoją na zablokowanym polu (czyli na jednym polu może być blok, wielu graczy i wiele bomb)
 - Na danym polu może być maksymalnie jeden blok
 
-```console
+```
 zdarzenia = []
 
 dla każdej bomby:
@@ -348,14 +423,14 @@ W wyniku eksplozji bomby zostają zniszczone wszystkie roboty w jej zasięgu ora
 Intuicyjnie oznacza to, że można się schować za blokiem, ale położenie bloku pod sobą nie chroni przed eksplozją.
 
 Przykłady:
-```asm
+```
 @ - blok
 A, B, C... - bomby
 1, 2, 3... - gracze
 x - eksplozja
 ```
 
-```asm
+```
 .@2..
 ..1..
 @@A.@
@@ -364,17 +439,42 @@ x - eksplozja
 ```
 
 Pola oznaczone jako eksplozja po wybuchu A z promieniem równym 2:
-```asm
-.Bx..
+```
+.@x..
 ..x..
-Bxxxx
+@xxxx
 ..x..
 .....
 ```
 
 A zatem zniszczone zostaną 3 bloki i oba roboty.
 
+Jeśli na polu jest bomba, blok i jacyś gracze, to wybuch bomby zniszczy blok i wszystkich graczy na tym polu stojących.
 
+```
+@@@@@
+@@AB@
+.@@@@
+```
+
+Jednoczesna eksplozja A i B z promieniem równym 2:
+```
+@@xx@
+@xxxx
+.@xx@
+```
+
+Po eksplozji:
+```
+@@..@
+@....
+.@..@
+```
+
+Eksplozja jednej bomby nie powoduje eksplozji bomb sąsiednich.
+Jeśli kilka bomb wybucha w jednej turze, to skutki eksplozji są sumą teoriomnogościową
+pojedynczych eksplozji rozpatrywanych osobno.
+W powyższym przykładzie widać że blok o współrzędnych (0, 1) nie został zniszczony.
 
 ### 2.9. Wykonywanie ruchu
 
@@ -389,7 +489,7 @@ To serwer decyduje o tym, czy dany ruch jest dozwolony czy nie. Jeśli gracz sto
 
 ### 2.10. Kończenie rozgrywki
 
-Po `game_length` turach serwer wysyła do wszystkich klientów wiadomość `GameEnded` i wraca do stanu `Lobby`. Klienci, którzy byli do tej pory graczami, przestają nimi być, ale oczywiście mogą się z powrotem zgłosić przy pomocy komunikatu `Join`. Wszystkie komunikaty otrzymane w czasie ostatniej tury rozgrywki są ignorowane.
+Po `game_length` turach serwer wysyła do wszystkich klientów wiadomość `GameEnded` i wraca do stanu `Lobby`. Klienci, którzy byli do tej pory graczami, przestają nimi być, ale oczywiście mogą się z powrotem zgłosić przy pomocy komunikatu `JoinServer`. Wszystkie komunikaty otrzymane w czasie ostatniej tury rozgrywki są ignorowane.
 
 ### 2.11. Błędy w komunikacji
 
@@ -402,8 +502,8 @@ Komunikacja z interfejsem odbywa się po UDP przy użyciu komunikatów serializo
 
 Klient wysyła do interfejsu graficznego następujące komunikaty:
 
-```cpp
-enum DrawMessage {
+```
+enum ClientMessageToDisplay {
     [0] Lobby {
         server_name: String,
         players_count: u8,
@@ -435,11 +535,11 @@ toku lub `AcceptedPlayer` jeśli rozgrywka się nie toczy).
 
 Interfejs wysyła do klienta następujące komunikaty:
 
-```cpp
+```
 enum InputMessage {
-    [0] PlaceBomb,
-    [1] PlaceBlock,
-    [2] Move { direction: Direction },
+    [0] PlaceBombServer,
+    [1] PlaceBlockServer,
+    [2] MoveServer { direction: Direction },
 }
 ```
 
@@ -469,18 +569,23 @@ Można korzystać z biblioteki `Boost`, w szczególności z modułu `asio`.
 
 Rozwiązanie ma kompilować się i działać na serwerze students.
 
-Rozwiązania należy kompilować z flagami `-Wall -Wextra -O2`. Przy kompilowaniu z tymi flagami kompilator nie powinien wypisywać żadnych ostrzeżeń.
+Rozwiązania należy kompilować z flagami `-Wall -Wextra -Wconversion -Werror -O2`.
 
-Rozwiązania napisane w języku C++ powinny być kompilowane z flagą `-std=c++20`, a w języku C z flagą `-std=c17`.
+Rozwiązania napisane w języku C++ powinny być kompilowane z flagą `-std=gnu++20`, 
+a w języku C z flagą `-std=gnu17` przy użyciu `GCC 11.2` 
+lub nowszego (na students w katalogu `/opt/gcc-11.2/bin`.
 
 Rozwiązanie powinno być odpowiednio sformatowane (można użyć np. `clang-format`).
+
+Dodatkowo polecamy używanie lintera (np. `clang-tidy`, który jest zintegrowany z `CLionem`) 
+i/lub kompilowanie z flagą `-fanalyzer`.
 
 ## 5. Oddawanie rozwiązania
 
 Jako rozwiązanie można oddać tylko klienta (część A) lub tylko serwer (część B),
 albo obie części.
 
-Termin oddawania części A to 23.05, a termin oddawania części B to 7.0606.07.
+Termin oddawania części A to 23.05, a termin oddawania części B to 07.06 (siódmy czerwca).
 
 Jako rozwiązanie należy dostarczyć pliki źródłowe oraz plik `makefile`, które
 należy umieścić jako skompresowane archiwum w Moodle. Archiwum powinno zawierać
@@ -501,40 +606,58 @@ Za rozwiązanie części B zadania można dostać maksymalnie 15 punktów.
 Każda część zadania będzie testowana i oceniana osobno.
 Ocena każdej z części zadania będzie się składała z trzech składników:
 
-  1. ocena wzrokowa i manualna działania programu (20%)
-  2. testy automatyczne (50%)
-  3. jakość kodu źródłowego (30%)
+1. ocena wzrokowa i manualna działania programu (20%)
+2. testy automatyczne (50%)
+3. jakość kodu źródłowego (30%)
 
-### 6.1 Ocena wzrokowa i manualna działania programu
+### 6.1. Ocena wzrokowa i manualna działania programu
 
 - jak program reaguje, gdy zostanie wywołany z bezsensownymi argumentami? (Najlepiej jeśli wypisuje jakiś komunikat o błędzie; ważne żeby nie było segfaulta)
 - czy w grę rzeczywiście da się grać
 
-### 6.2 Testy automatyczne
+### 6.2. Testy automatyczne
 
 Testy będą obejmowały m.in.:
 - bardzo proste scenariusze testowe (czy podłączenie gracza do serwera powoduje wysłanie odpowiedniego komunikatu do klientów, czy otrzymanie wiadomości od interfejsu powoduje wysłanie wiadomości do serwera, czy otrzymanie wiadomości od serwera powoduje wysłanie wiadomości do klienta itd., czy programy prawidłowo resolvują nazwy domenowe (np. localhost), czy można się połączyć zarówno po IPv4 jak i IPv6)
 - proste scenariusze testowe (symulacja krótkiej rozgrywki z jednym graczem, czy generowanie planszy odbywa się zgodnie z powyższym opisem; czy wybuch bomby jest prawidłowo obliczany, czy prawidłowo obsługiwane są znaki spoza zakresu ASCII)
 - złożone scenariusze testowe (symulacja kilku rozgrywek z wieloma graczami)
 
-### 6.3 Jakość kodu źródłowego
+### 6.3. Jakość kodu źródłowego
 
 - absolutne podstawy: kod powinien być jednolicie sformatowany (najlepiej użyć do tego clang-format lub formatera wbudowanego w cliona), nie wyciekać pamięci, po skompilowaniu z parametrami `-Wall -Wextra` nie powinno być żadnych ostrzeżeń. Dodatkowo można sprawdzić sobie program przy użyciu lintera `clang-tidy`
 - kod powinien być sensownie podzielony na funkcje, nazwy funkcji i zmiennych powinny być znaczące (a nie np. a, b, x, y, temp) i w jednym języku
 - komentarze powinny być w jednym języku
 - „magiczne stałe” powinny być ponazywane
-- [„Parse, don’t validate”](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/) 
+- [„Parse, don’t validate”](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/)
 
 
 ## 7. FAQ
 
 - P: Klient może wysłać do serwera bardzo dużo ruchów (bo np. gracz wciska szybko różne strzałki), zatem nawet jak na bieżąco odczytujemy dane z socketu, to po upływie tych turn-duration milisekund, w sockecie wciąż mogą zalegać ruchy. Czy przechodzą one na następną turę? Dla przykładu, robię ruchy LPDLLPDGGLPDG, więc też takie trafią do socketu po stronie serwera, i przed upływem turn-duration ms, serwer przetworzył LPDL, więc przyjmuejmy, że w tej turze gracz robi ruch L. Czy pozostałe ruchy zalegające w sockecie (LPDGGLPDG) przechodzą na następną turę?
 - O: Możemy założyć, że zależy to od implementującego, bo testy automatyczne będziemy uruchamiać z dostatecznie długimi turami (rzędu 1s), żeby to się na pewno nie zdarzyło
-- P: Jak rozumiem, gra się zaczyna po tym jak serwer dostanie players-count komunikatów Join. Co jeśli przyjdzie więcej komunikatów Join? Mamy je zignorować?
-- O: Tak, serwer ignoruje komunikaty Join w momencie, gdy rozgrywka jest w trakcie
+- P: Jak rozumiem, gra się zaczyna po tym jak serwer dostanie players-count komunikatów JoinServer. Co jeśli przyjdzie więcej komunikatów JoinServer? Mamy je zignorować?
+- O: Tak, serwer ignoruje komunikaty JoinServer w momencie, gdy rozgrywka jest w trakcie
 - P: Odłączanie graczy rozpoznajemy po tym, że read/write z socketu TCP zwróci 0?
 - O: Tak
-- P: Kiedy mamy zapomnieć o istnieniu danego klienta? Jeśli dobrze rozumiem, to jeśli obserwator (czyli ktoś, kto nawiązał połączenie TCP z serwerem, ale nie wysłał jeszcze komunikatu Join) się odłączy to możemy zapomnieć o nim. Jeśli gracz się odłączy to ślad po nim (tj. pozycja robota itp.) istnieje do końca obecnej gry, ale po jej zakończeniu, możemy o nim zapomnieć?
+- P: Kiedy mamy zapomnieć o istnieniu danego klienta? Jeśli dobrze rozumiem, to jeśli obserwator (czyli ktoś, kto nawiązał połączenie TCP z serwerem, ale nie wysłał jeszcze komunikatu JoinServer) się odłączy to możemy zapomnieć o nim. Jeśli gracz się odłączy to ślad po nim (tj. pozycja robota itp.) istnieje do końca obecnej gry, ale po jej zakończeniu, możemy o nim zapomnieć?
 - O: Dokładnie tak
-- P: Jeśli gra się jeszcze nie rozpoczęła i podłączy się nowy klient, to jak rozumiem, należy wysłać do niego komunikat Hello i serię komunikatów AcceptedPlayer, by poinformować o tym jacy są obecnie gracze w Lobby. Jeśli w odpowiedzi na to, klient prześle Join to należy do wszystkich obserwatorów i graczy wysłać AcceptedPlayer, żeby wszyscy się dowiedzieli o nowym graczu. Dobrze rozumiem?
+- P: Jeśli gra się jeszcze nie rozpoczęła i podłączy się nowy klient, to jak rozumiem, należy wysłać do niego komunikat Hello i serię komunikatów AcceptedPlayer, by poinformować o tym jacy są obecnie gracze w Lobby. Jeśli w odpowiedzi na to, klient prześle JoinServer to należy do wszystkich obserwatorów i graczy wysłać AcceptedPlayer, żeby wszyscy się dowiedzieli o nowym graczu. Dobrze rozumiem?
 - O: Tak właśnie
+- P: Co jeśli wybuchnie bomba, a na jej "drodze wybuchu" będzie znajdować się inna bomba?
+- O: Nic (to znaczy wybuch jednej bomby nie powoduje wybuchu innych bomb ani ich nie niszczy)
+- P: Rekord Player: { name: String, address: String }. Czy jest jakaś specyfikacja jak powinien wyglądać adres IPv4/IPv6? Czy można założyć, że dopuszczalny będzie po prostu output z funkcji inet_ntop?
+- O: Tak
+- P: Co zrobić, gdy GUI wyśle komunikat, którego nie da się sparsować, do klienta?
+- O: Zignorować
+- P: Co zrobić, gdy serwer wyśle komunikat, którego nie da się sparsować, do klienta?
+- O: Rozłączyć się, bo po niepoprawnym komunikacie nie wiadomo, kiedy miałby zacząć się poprawny komunikat
+- P: Co zrobić, gdy serwer wyśle komunikat, który da się sparsować, ale nie ma sensu? (np. wybucha bomba, która miała jeszcze 10 tur na timerze lub gracz zostaje przeniesiony nagle na drugi koniec planszy)
+- O: Serwer zawsze ma rację
+- P: Co ma robić klient jak jest w trakcie gry a dostanie od serwera komuikat AcceptedPlayer/GameStarted?
+- O: Zależy od implementacji
+- P: Obliczanie score w kliencie to nie jest tak proste, że się sprawdza ile razy przyszedł komunikat o zabiciu gracza, tylko score to ilość tur, gdzie występuję przynajmniej jeden taki komunikat?
+- O: Tak
+- P: Czy id graczy się resetują przy nowej grze?
+- O: Tak
+- P: Czy dwa bloki o takich samych współrzędnych są traktowane jako jeden blok, czy jako dwa różne?
+- O: Na danym polu może stać tylko jeden blok.

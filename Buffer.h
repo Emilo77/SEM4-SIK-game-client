@@ -3,13 +3,19 @@
 
 #define BUFFER_SIZE 65507
 
+#define MAX_SERVER_INPUT_TYPE 3
+#define MAX_DISPLAY_INPUT_TYPE 2
+#define MAX_DIRECTION_TYPE 3
+
 #include "ClientParameters.h"
 #include "Utils.h"
+#include <cstring>
+#include <optional>
+using std::string;
 
 class Buffer {
 private:
-	// we begin from 1, because we already know the value of buffer[0]- message_id
-	void reset_read_index() { read_index = 1; }
+	void reset_read_index() { read_index = 0; }
 	void reset_send_index() { send_index = 0; }
 
 	//CONVERTING NUMBERS
@@ -27,22 +33,26 @@ private:
 	//INSERTS WITH TASK CONVENTION
 	template<typename T>
 	void insert(T number);
-	void insert(ClientMessageToServer message);
+	void insert(ClientMessageToServerType message);
+	void insert(GameState state);
 	void insert(Direction direction);
 	void insert(const std::string &str);
 	void insert(Position &position);
 	void insert(Player &player);
+	void insert(Bomb &bomb);
+	void insert(Event &event);
 	template<typename T>
 	void insert_list(std::list<T> &list);
 	template<typename T, typename U>
 	void insert_map(std::map<T, U> &map);
 
-
-
+	// RECEIVES WITH TASK CONVENTION
 	template<typename T>
 	void receive(T &number);
 	void receive(std::string &str);
+	void receive(Position &position);
 	void receive(Player &player);
+	void receive(Bomb &bomb);
 	void receive(Event &event);
 	template<typename T>
 	void receive_list(std::list<T> &list);
@@ -50,24 +60,32 @@ private:
 	void receive_map(std::map<T, U> &map);
 
 
+	// SENDING TO SERVER
 	void send_join(std::string &string);
 	void send_place_bomb();
 	void send_place_block();
 	void send_move(Direction direction);
 
-	void receive_hello(ServerMessageUnion &message);
-	void receive_accepted_player(ServerMessageUnion &message);
-	void receive_game_started(ServerMessageUnion &message);
-	void receive_turn(ServerMessageUnion &message);
-	void receive_game_ended(ServerMessageUnion &message);
+	// RECEIVING FROM SERVER
+	void receive_hello(ReceivedServerMessageUnion &message);
+	void receive_accepted_player(ReceivedServerMessageUnion &message);
+	void receive_game_started(ReceivedServerMessageUnion &message);
+	void receive_turn(ReceivedServerMessageUnion &message);
+	void receive_game_ended(ReceivedServerMessageUnion &message);
 
-
+	// SENDING TO DISPLAY
+	void send_lobby(DrawMessageUnion &message);
+	void send_game(DrawMessageUnion &message);
 
 public:
-	size_t send_to_server(ClientMessageToServer clientMessage,
+	size_t send_to_server(ClientMessageToServerType clientMessage,
 	                      std::string name = std::string(), Direction direction = {});
 
-	void receive_from_server(ServerMessage &serverMessage);
+	void receive_from_server(std::optional<ServerMessageToClient> &serverMessage);
+
+	size_t send_to_display(ClientMessageToDisplay &drawMessage);
+
+	void receive_from_display(std::optional<DisplayMessageToClient> &message);
 
 	size_t get_size() const { return send_index; }
 
@@ -78,7 +96,7 @@ public:
 private:
 	char buffer[BUFFER_SIZE]{};
 	size_t send_index{0};
-	size_t read_index{1};
+	size_t read_index{0};
 };
 
 

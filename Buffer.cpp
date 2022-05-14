@@ -1,10 +1,5 @@
 #include "Buffer.h"
 
-#include <cstring>
-
-using std::string;
-
-
 template<typename T>
 T Buffer::convert_to_send(T number) {
 	switch (sizeof(T)) {
@@ -47,7 +42,9 @@ void Buffer::insert_raw(const string &str) {
 	send_index += size;
 }
 
-void Buffer::insert(ClientMessageToServer message) { insert((uint8_t) message); }
+void Buffer::insert(ClientMessageToServerType message) { insert((uint8_t) message); }
+
+void Buffer::insert(GameState state) { insert((uint8_t) state); }
 
 void Buffer::insert(Direction direction) { insert((uint8_t) direction); }
 
@@ -78,6 +75,14 @@ void Buffer::insert(Player &player) {
 	insert(player.address);
 }
 
+void Buffer::insert(Bomb &bomb) {
+	insert(bomb.position);
+	insert(bomb.timer);
+}
+
+void Buffer::insert(Event &event) {
+}
+
 template<typename T>
 //todo ograniczenie na T, że musi być primitive
 void Buffer::insert_list(std::list<T> &list) {
@@ -102,9 +107,19 @@ void Buffer::receive(string &str) {
 	receive_raw(str, string_size);
 }
 
+void Buffer::receive(Position &position) {
+	receive(position.x);
+	receive(position.y);
+}
+
 void Buffer::receive(Player &player) {
 	receive(player.name);
 	receive(player.address);
+}
+
+void Buffer::receive(Bomb &bomb) {
+	receive(bomb.position);
+	receive(bomb.timer);
 }
 
 void Buffer::receive(Event &event) {
@@ -136,31 +151,30 @@ void Buffer::receive_map(std::map<T, U> &map) {
 }
 
 
-
 void Buffer::send_join(string &name) {
 	reset_send_index();
-	insert(ClientMessageToServer::Join);
+	insert(ClientMessageToServerType::JoinServer);
 	insert(name);
 }
 
 void Buffer::send_place_bomb() {
 	reset_send_index();
-	insert(ClientMessageToServer::PlaceBomb);
+	insert(ClientMessageToServerType::PlaceBombServer);
 }
 
 void Buffer::send_place_block() {
 	reset_send_index();
-	insert(ClientMessageToServer::PlaceBlock);
+	insert(ClientMessageToServerType::PlaceBlockServer);
 }
 
 void Buffer::send_move(Direction direction) {
 	reset_send_index();
-	insert(ClientMessageToServer::Move);
+	insert(ClientMessageToServerType::MoveServer);
 	insert(direction);
 }
 
 
-void Buffer::receive_hello(ServerMessageUnion &message) {
+void Buffer::receive_hello(ReceivedServerMessageUnion &message) {
 	reset_read_index();
 	receive(message.Hello.server_name);
 	receive(message.Hello.players_count);
@@ -170,64 +184,122 @@ void Buffer::receive_hello(ServerMessageUnion &message) {
 	receive(message.Hello.explosion_radius);
 	receive(message.Hello.bomb_timer);
 }
-void Buffer::receive_accepted_player(ServerMessageUnion &message) {
+void Buffer::receive_accepted_player(ReceivedServerMessageUnion &message) {
 	reset_read_index();
 	receive(message.AcceptedPlayer.player_id);
 	receive(message.AcceptedPlayer.player);
 }
-void Buffer::receive_game_started(ServerMessageUnion &message) {
+void Buffer::receive_game_started(ReceivedServerMessageUnion &message) {
 	receive_map(message.GameStarted.players);
 }
-void Buffer::receive_turn(ServerMessageUnion &message) {
+void Buffer::receive_turn(ReceivedServerMessageUnion &message) {
 	receive(message.Turn.turn);
 	receive_list(message.Turn.events);
 }
-void Buffer::receive_game_ended(ServerMessageUnion &message) {
-        receive_map(message.GameEnded.scores);
+void Buffer::receive_game_ended(ReceivedServerMessageUnion &message) {
+	receive_map(message.GameEnded.scores);
+}
+
+void Buffer::send_lobby(DrawMessageUnion &message) {
+	reset_send_index();
+	insert(GameState::Lobby);
+
+	insert(message.Lobby.server_name);
+	insert(message.Lobby.players_count);
+	insert(message.Lobby.size_x);
+	insert(message.Lobby.size_y);
+	insert(message.Lobby.game_length);
+	insert(message.Lobby.explosion_radius);
+	insert(message.Lobby.bomb_timer);
+	insert_map(message.Lobby.players);
+}
+void Buffer::send_game(DrawMessageUnion &message) {
+	reset_send_index();
+	insert(GameState::Gameplay);
+
+	insert(message.Gameplay.server_name);
+	insert(message.Gameplay.size_x);
+	insert(message.Gameplay.size_y);
+	insert(message.Gameplay.game_length);
+	insert(message.Gameplay.turn);
+	insert_map(message.Gameplay.players);
+	insert_map(message.Gameplay.player_positions);
+	insert_list(message.Gameplay.blocks);
+	insert_list(message.Gameplay.bombs);
 }
 
 
-
-size_t Buffer::send_to_server(ClientMessageToServer clientMessage, std::string name, Direction direction) {
+size_t Buffer::send_to_server(ClientMessageToServerType clientMessage, std::string name, Direction direction) {
+	reset_send_index();
 	switch (clientMessage) {
-		case ClientMessageToServer::Join:
+		case ClientMessageToServerType::JoinServer:
 			send_join(name);
 			break;
-		case ClientMessageToServer::PlaceBomb:
+		case ClientMessageToServerType::PlaceBombServer:
 			send_place_bomb();
 			break;
-		case ClientMessageToServer::PlaceBlock:
+		case ClientMessageToServerType::PlaceBlockServer:
 			send_place_block();
 			break;
-		case ClientMessageToServer::Move:
+		case ClientMessageToServerType::MoveServer:
 			send_move(direction);
 			break;
 	}
 	return get_size();
 }
-void Buffer::receive_from_server(ServerMessage &serverMessage) {
+void Buffer::receive_from_server(std::optional<ServerMessageToClient> &serverMessage) {
 	reset_read_index();
 	uint8_t message;
 	receive(message);
-	serverMessage.type = (ServerMessageToClientType) message;
-	switch ((ServerMessageToClientType) message) {
+	serverMessage->type = (ServerMessageToClientType) message;
+	switch (message) {
 		case Hello:
-			receive_hello(serverMessage.data);
+			receive_hello(serverMessage->data);
 			break;
 		case AcceptedPlayer:
-			receive_accepted_player(serverMessage.data);
+			receive_accepted_player(serverMessage->data);
 			break;
 		case GameStarted:
-			receive_game_started(serverMessage.data);
+			receive_game_started(serverMessage->data);
 			break;
 		case Turn:
-			receive_turn(serverMessage.data);
+			receive_turn(serverMessage->data);
 			break;
 		case GameEnded:
+			receive_game_ended(serverMessage->data);
 			break;
 	}
 }
 
+size_t Buffer::send_to_display(ClientMessageToDisplay &drawMessage) {
+	switch (drawMessage.state) {
+		case Lobby:
+			send_lobby(drawMessage.data);
+			break;
+		case Gameplay:
+			send_game(drawMessage.data);
+			break;
+	}
+	return 0;
+}
+void Buffer::receive_from_display(std::optional<DisplayMessageToClient> &message) {
+	reset_read_index();
+	uint8_t message_type;
+	receive(message_type);
+	if (message_type > MAX_DISPLAY_INPUT_TYPE) {
+		return;
+	}
+	if (message_type == DisplayMessageToClientType::MoveDisplay) {
+		uint8_t direction;
+		receive(direction);
+		if (direction > MAX_DIRECTION_TYPE) {
+			return;
+		}
+		message->direction = (Direction) direction;
+	}
+	message->type = (DisplayMessageToClientType) message_type;
+
+}
 
 
 //todo: stworzyć listę eventów i je tam dodawać

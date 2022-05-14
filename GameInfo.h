@@ -8,10 +8,7 @@
 #include <string>
 #include "Utils.h"
 
-enum GameState {
-	Lobby,
-	Gameplay
-};
+
 
 class GameInfo {
 private:

@@ -5,12 +5,11 @@ void Client::initialize() {}
 void Client::run() {}
 
 
-DrawMessage Client::handle_message_from_display() {
-	switch (buffer.get_message_id()) {
-		case 0:
-			break;
-	}
+DisplayMessageToClient Client::handle_message_from_display() {
+	std::optional<DisplayMessageToClient> message{};
+	buffer.receive_from_display(message);
+
 }
 
-ServerMessage Client::handle_message_from_server() {
+ServerMessageToClient Client::handle_message_from_server() {
 }

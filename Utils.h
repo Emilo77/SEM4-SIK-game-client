@@ -1,7 +1,6 @@
 #ifndef ZADANIE02_EVENT_H
 #define ZADANIE02_EVENT_H
 
-#include "Event.h"
 #include <bits/sigaction.h>
 #include <csignal>
 #include <cstdint>
@@ -21,14 +20,16 @@ enum Direction {
 	Right = 1,
 	Down = 2,
 	Left = 3,
-	InvalidDirection = 4,
 };
+bool invalid_direction(uint8_t direction) {
+	return direction > 3;
+}
 
-enum ClientMessageToServer {
-	Join = 0,
-	PlaceBomb = 1,
-	PlaceBlock = 2,
-	Move = 3,
+enum ClientMessageToServerType {
+	JoinServer = 0,
+	PlaceBombServer = 1,
+	PlaceBlockServer = 2,
+	MoveServer = 3,
 };
 
 enum ServerMessageToClientType {
@@ -38,7 +39,26 @@ enum ServerMessageToClientType {
 	Turn = 3,
 	GameEnded = 4,
 };
+bool invalid_server_message_type(uint8_t type) {
+	return type > 4;
+}
 
+enum DisplayMessageToClientType {
+	PlaceBombDisplay = 0,
+	PlaceBlockDisplay = 1,
+	MoveDisplay = 2,
+};
+bool invalid_display_message_type(uint8_t type) {
+	return type > 2;
+}
+
+enum GameState {
+	Lobby = 0,
+	Gameplay = 1,
+};
+bool invalid_game_state(uint8_t state) {
+	return state > 1;
+}
 
 struct Player {
 	std::string name;
@@ -57,23 +77,20 @@ struct Position {
 	}
 
 	bool operator!=(const Position &rhs) const {
-		return !(x == rhs.x &&
-		         y == rhs.y);
+		return !(x == rhs.x && y == rhs.y);
 	}
 };
 
 class Bomb {
-	uint32_t bomb_id;
+public:
+	bomb_id_t bomb_id;
 	uint16_t timer;
 	Position position;
 
-public:
-	bool operator<(const Bomb &rhs) const {
-		return bomb_id < rhs.bomb_id;
-	}
+	bool operator<(const Bomb &rhs) const { return bomb_id < rhs.bomb_id; }
 };
 
-union ServerMessageUnion {
+union ReceivedServerMessageUnion {
 	struct {
 		std::string server_name;
 		uint8_t players_count;
@@ -103,31 +120,49 @@ union ServerMessageUnion {
 	} GameEnded;
 };
 
-struct ServerMessage {
+struct ServerMessageToClient {
 	ServerMessageToClientType type;
-	ServerMessageUnion data;
+	ReceivedServerMessageUnion data;
 };
 
 
-struct DrawMessage {
-	//	std::string server_name;
-	//	uint16_t size_x;
-	//	uint16_t size_y;
-	//	uint16_t game_length;
-	//	std::map<player_id_t , Player> players;
-	//
-	//	// [0] Lobby
-	//	uint8_t players_count;
-	//	uint16_t explosion_radius;
-	//	uint16_t bomb_timer;
-	//
-	//	// [1] Game
-	//	uint16_t turn;
-	//	std::map<player_id_t, Position> player_positions;
-	//	std::list<Position> blocks;
-	//	std::list<Bomb> bombs;
-	//	std::list<Position> explosions;
-	//	std::map<player_id_t, score_t> scores;
+
+union DrawMessageUnion {
+	struct {
+		std::string server_name;
+		uint8_t players_count;
+		uint16_t size_x;
+		uint16_t size_y;
+		uint16_t game_length;
+		uint16_t explosion_radius;
+		uint16_t bomb_timer;
+		std::map<player_id_t, Player> players;
+	} Lobby;
+
+	struct {
+		std::string server_name;
+		uint16_t size_x;
+		uint16_t size_y;
+		uint16_t game_length;
+		uint16_t turn;
+		std::map<player_id_t, Player> players;
+		std::map<player_id_t, Position> player_positions;
+		std::list<Position> blocks;
+		std::list<Bomb> bombs;
+		std::list<Position> explosions;
+		std::map<player_id_t, score_t> scores;
+	} Gameplay;
+};
+
+struct ClientMessageToDisplay {
+	GameState state;
+	DrawMessageUnion data;
+};
+
+
+struct DisplayMessageToClient {
+	DisplayMessageToClientType type;
+	Direction direction;
 };
 
 
@@ -141,20 +176,18 @@ std::pair<int, int> direction_to_pair(Direction &direction) {
 			return {0, -1};
 		case Left:
 			return {-1, 0};
-		case InvalidDirection:
-			return {69, 69};//todo potem zmienić
 	}
 }
 
 class BombPlaced : public Event {
 public:
-	uint32_t bomb_id;
+	bomb_id_t bomb_id;
 	Position position;
 };
 
 class BombExploded : public Event {
 public:
-	uint32_t bomb_id;
+	bomb_id_t bomb_id;
 	std::list<uint8_t> robots_destroyed;
 	std::list<Position> blocks_destroyed;
 };
