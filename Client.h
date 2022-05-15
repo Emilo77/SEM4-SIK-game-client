@@ -4,6 +4,7 @@
 #include "Buffer.h"
 #include "ClientParameters.h"
 #include "GameInfo.h"
+#include <iostream>
 
 class Client {
 private:

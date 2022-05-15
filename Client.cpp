@@ -11,7 +11,9 @@ void Client::send_to_server() {
 
 void Client::initialize() {}
 
-void Client::run() {}
+void Client::run() {
+	std::cout << "Client is running" << std::endl;
+}
 
 void Client::handle_message_from_display(size_t length) {
 	auto message = buffer.receive_from_display(length);

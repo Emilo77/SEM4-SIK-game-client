@@ -4,7 +4,7 @@ CXXFLAGS = -Wall -Wextra -O2 -std=gnu++17
 CXX_SRC = robots-client
 
 robots-client: Client.cpp Client.h Buffer.o ClientParameters.o GameInfo.o
-	$(CXX) $(CXXFLAGS) -o $(CXX_SRC) Client.cpp Buffer.o ClientParameters.o GameInfo.o
+	$(CXX) -L/usr/lib/x86_64-linux-gnu/ -lboost_program_options $(CXXFLAGS) -o $(CXX_SRC) Client.cpp Buffer.o ClientParameters.o GameInfo.o
 
 ClientParameters.o: ClientParameters.cpp ClientParameters.h
 	$(CXX) $(CXXFLAGS) -c ClientParameters.cpp

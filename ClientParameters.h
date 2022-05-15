@@ -1,11 +1,7 @@
-
-//
-// Created by emilo77 on 07.05.22.
-//
-
 #ifndef ZADANIE02_CLIENTPARAMETERS_H
 #define ZADANIE02_CLIENTPARAMETERS_H
 
+#include <boost/program_options.hpp>
 #include <string>
 
 
