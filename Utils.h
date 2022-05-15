@@ -1,7 +1,6 @@
 #ifndef ZADANIE02_EVENT_H
 #define ZADANIE02_EVENT_H
 
-#include <bits/sigaction.h>
 #include <csignal>
 #include <cstdint>
 #include <list>
@@ -22,7 +21,7 @@ enum Direction {
 	Down = 2,
 	Left = 3,
 };
-bool invalid_direction(uint8_t direction) {
+static bool invalid_direction(uint8_t direction) {
 	return direction > 3;
 }
 
@@ -40,7 +39,7 @@ enum ServerMessageToClientType {
 	Turn = 3,
 	GameEnded = 4,
 };
-bool invalid_server_message_type(uint8_t type) {
+static bool invalid_server_message_type(uint8_t type) {
 	return type > 4;
 }
 
@@ -49,7 +48,7 @@ enum DisplayMessageToClientType {
 	PlaceBlockDisplay = 1,
 	MoveDisplay = 2,
 };
-bool invalid_display_message_type(uint8_t type) {
+static bool invalid_display_message_type(uint8_t type) {
 	return type > 2;
 }
 
@@ -57,7 +56,7 @@ enum GameState {
 	Lobby = 0,
 	Gameplay = 1,
 };
-bool invalid_game_state(uint8_t state) {
+static bool invalid_game_state(uint8_t state) {
 	return state > 1;
 }
 
@@ -170,7 +169,7 @@ struct ClientMessageToDisplay {
 };
 
 
-std::pair<int, int> direction_to_pair(Direction &direction) {
+static std::pair<int, int> direction_to_pair(Direction &direction) {
 	switch (direction) {
 		case Up:
 			return {0, 1};
@@ -181,6 +180,7 @@ std::pair<int, int> direction_to_pair(Direction &direction) {
 		case Left:
 			return {-1, 0};
 	}
+	return {69, 69};
 }
 
 class BombPlaced : public Event {

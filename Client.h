@@ -4,7 +4,6 @@
 #include "Buffer.h"
 #include "ClientParameters.h"
 #include "GameInfo.h"
-#include "Utils.h"
 
 class Client {
 private:
@@ -12,23 +11,32 @@ private:
 	Buffer buffer;
 	GameInfo gameInfo;
 
-public:
-	explicit Client(ClientParameters &parameters) : parameters(parameters) {}
+	void receive_from_dislay();
 
-	void handle_message_from_server();
+	void receive_from_server();
 
-	void handle_message_from_display();
+	void send_to_display();
+
+	void send_to_server();
+
+	void handle_message_from_server(size_t length);
+
+	void handle_message_from_display(size_t length);
 
 	void initialize();
 
+public:
+	explicit Client(ClientParameters &parameters) : parameters(parameters) {
+		initialize();
+	}
 	void run();
 };
 
-//int main(int argc, char *argv[]) {
-//	ClientParameters parameters(argc, argv);
-//	Client client(parameters);
-//	client.run();
-//}
+int main(int argc, char *argv[]) {
+	ClientParameters parameters(argc, argv);
+	Client client(parameters);
+	client.run();
+}
 
 
 #endif //ZADANIE02_CLIENT_H
