@@ -11,6 +11,9 @@ private:
 	ClientParameters parameters;
 	Buffer buffer;
 	GameInfo gameInfo;
+	bool finish{false};
+
+	void bind_sockets();
 
 	void receive_from_dislay();
 

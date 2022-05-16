@@ -11,6 +11,8 @@
 #include "Utils.h"
 #include <cstring>
 #include <optional>
+
+
 using std::string;
 
 class Buffer {
@@ -40,7 +42,6 @@ private:
 	void insert(Position &position);
 	void insert(Player &player);
 	void insert(Bomb &bomb);
-	void insert(Event &event);
 	template<typename T>
 	void insert_list(std::list<T> &list);
 	template<typename T, typename U>
@@ -53,7 +54,14 @@ private:
 	void receive(Position &position);
 	void receive(Player &player);
 	void receive(Bomb &bomb);
-	void receive(Event &event);
+
+	void receive_event_content(struct BombPlaced &data);
+	void receive_event_content(struct BombExploded &data);
+	void receive_event_content(struct PlayerMoved &data);
+	void receive_event_content(struct BlockPlaced &data);
+	void receive_event(EventType type, Event &event);
+
+	void receive_event_list(std::list<Event> &list);
 	template<typename T>
 	void receive_list(std::list<T> &list);
 	template<typename T, typename U>

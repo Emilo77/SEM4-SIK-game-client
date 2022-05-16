@@ -12,8 +12,73 @@ using player_id_t = uint8_t;
 using bomb_id_t = uint32_t;
 using score_t = uint32_t;
 
-class Event {
+struct Position {
+	uint16_t x;
+	uint16_t y;
+
+	Position() : x(0), y(0) {}
+
+	Position(uint16_t x, uint16_t y) : x(x), y(y) {}
+
+	bool operator==(const Position &rhs) const {
+		return x == rhs.x &&
+		       y == rhs.y;
+	}
+
+	bool operator!=(const Position &rhs) const {
+		return !(x == rhs.x && y == rhs.y);
+	}
 };
+
+enum EventType {
+	BombPlaced = 0,
+	BombExploded = 1,
+	PlayerMoved = 2,
+	BlockPlaced = 3,
+};
+
+class Bomb {
+public:
+	bomb_id_t bomb_id;
+	uint16_t timer;
+	Position position;
+
+	bool operator<(const Bomb &rhs) const { return bomb_id < rhs.bomb_id; }
+};
+
+struct BombPlaced {
+	uint8_t bomb_id;
+	Position position;
+};
+
+struct BombExploded {
+	uint8_t bomb_id;
+	std::list<uint8_t> robots_destroyed;
+	std::list<Position> blocks_destroyed;
+};
+
+struct PlayerMoved {
+	uint8_t player_id;
+	Position position;
+};
+
+struct BlockPlaced {
+	Position position;
+};
+
+class Event {
+public:
+	EventType type;
+	std::variant<struct BombPlaced, struct BombExploded,
+			struct PlayerMoved, struct BlockPlaced> data;
+
+	explicit Event(EventType type,
+	               std::variant<struct BombPlaced, struct BombExploded,
+			               struct PlayerMoved, struct BlockPlaced> &data)
+			: type(type), data(data) {
+	}
+};
+
 
 enum Direction {
 	Up = 0,
@@ -21,6 +86,7 @@ enum Direction {
 	Down = 2,
 	Left = 3,
 };
+
 static bool invalid_direction(uint8_t direction) {
 	return direction > 3;
 }
@@ -39,6 +105,7 @@ enum ServerMessageToClientType {
 	Turn = 3,
 	GameEnded = 4,
 };
+
 static bool invalid_server_message_type(uint8_t type) {
 	return type > 4;
 }
@@ -48,6 +115,7 @@ enum DisplayMessageToClientType {
 	PlaceBlockDisplay = 1,
 	MoveDisplay = 2,
 };
+
 static bool invalid_display_message_type(uint8_t type) {
 	return type > 2;
 }
@@ -56,6 +124,7 @@ enum GameState {
 	Lobby = 0,
 	Gameplay = 1,
 };
+
 static bool invalid_game_state(uint8_t state) {
 	return state > 1;
 }
@@ -63,31 +132,6 @@ static bool invalid_game_state(uint8_t state) {
 struct Player {
 	std::string name;
 	std::string address;
-};
-
-struct Position {
-	uint16_t x;
-	uint16_t y;
-
-	Position(uint16_t x, uint16_t y) : x(x), y(y) {}
-
-	bool operator==(const Position &rhs) const {
-		return x == rhs.x &&
-		       y == rhs.y;
-	}
-
-	bool operator!=(const Position &rhs) const {
-		return !(x == rhs.x && y == rhs.y);
-	}
-};
-
-class Bomb {
-public:
-	bomb_id_t bomb_id;
-	uint16_t timer;
-	Position position;
-
-	bool operator<(const Bomb &rhs) const { return bomb_id < rhs.bomb_id; }
 };
 
 struct Hello {
@@ -148,8 +192,8 @@ struct GamePlay {
 struct ServerMessageToClient {
 	ServerMessageToClientType type;
 	std::variant<struct Hello, struct AcceptedPlayer,
-	             struct GameStarted, struct Turn, struct GameEnded>
-	        data;
+			struct GameStarted, struct Turn, struct GameEnded>
+			data;
 };
 
 struct DisplayMessageToClient {
@@ -182,29 +226,5 @@ static std::pair<int, int> direction_to_pair(Direction &direction) {
 	}
 	return {69, 69};
 }
-
-class BombPlaced : public Event {
-public:
-	bomb_id_t bomb_id;
-	Position position;
-};
-
-class BombExploded : public Event {
-public:
-	bomb_id_t bomb_id;
-	std::list<uint8_t> robots_destroyed;
-	std::list<Position> blocks_destroyed;
-};
-
-class PlayerMoved : public Event {
-public:
-	uint8_t player_id;
-	Position position;
-};
-
-class BlockPlaced : public Event {
-public:
-	Position position;
-};
 
 #endif//ZADANIE02_EVENT_H

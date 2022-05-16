@@ -30,7 +30,7 @@ T Buffer::convert_to_receive(T number) {
 
 template<typename T>
 void Buffer::insert(T number) {
-	int size = sizeof(T);
+	size_t size = sizeof(T);
 	number = convert_to_send(number);
 	memcpy(buffer + send_index, &number, size);
 	send_index += size;
@@ -42,7 +42,8 @@ void Buffer::insert_raw(const string &str) {
 	send_index += size;
 }
 
-void Buffer::insert(ClientMessageToServerType message) { insert((uint8_t) message); }
+void Buffer::insert(ClientMessageToServerType message) {insert((uint8_t) message);
+}
 
 void Buffer::insert(GameState state) { insert((uint8_t) state); }
 
@@ -50,7 +51,7 @@ void Buffer::insert(Direction direction) { insert((uint8_t) direction); }
 
 template<typename T>
 void Buffer::receive(T &number) {
-	int size = sizeof(T);
+	size_t size = sizeof(T);
 	memcpy(&number, buffer + read_index, size);
 	read_index += size;
 	number = convert_to_receive(number);
@@ -61,7 +62,7 @@ void Buffer::receive_raw(string &str, size_t str_size) {
 }
 
 void Buffer::insert(Position &position) {
-	insert(position.x);
+	insert( position.x);
 	insert(position.y);
 }
 
@@ -78,9 +79,6 @@ void Buffer::insert(Player &player) {
 void Buffer::insert(Bomb &bomb) {
 	insert(bomb.position);
 	insert(bomb.timer);
-}
-
-void Buffer::insert(Event &event) {
 }
 
 template<typename T>
@@ -122,8 +120,58 @@ void Buffer::receive(Bomb &bomb) {
 	receive(bomb.timer);
 }
 
-void Buffer::receive(Event &event) {
-	//todo
+void Buffer::receive_event_content(struct BombPlaced &data) {
+	receive(data.bomb_id);
+	receive(data.position);
+}
+
+void Buffer::receive_event_content(struct BombExploded &data) {
+	receive(data.bomb_id);
+	receive_list(data.robots_destroyed);
+	receive_list(data.blocks_destroyed);
+}
+
+void Buffer::receive_event_content(struct PlayerMoved &data) {
+	receive(data.player_id);
+	receive(data.position);
+}
+
+void Buffer::receive_event_content(struct BlockPlaced &data) {
+	receive(data.position);
+}
+
+void Buffer::receive_event(EventType type, Event &event) {
+	event.type = type;
+	switch (type) {
+		case BombPlaced:
+			receive_event_content(std::get<struct BombPlaced>(event.data));
+			break;
+		case BombExploded:
+			receive_event_content(std::get<struct BombExploded>(event.data));
+			break;
+		case PlayerMoved:
+			receive_event_content(std::get<struct PlayerMoved>(event.data));
+			break;
+		case BlockPlaced:
+			receive_event_content(std::get<struct BlockPlaced>(event.data));
+			break;
+	}
+}
+
+void Buffer::receive_event_list(std::list<Event> &list) {
+	size_t list_size;
+	receive(list_size);
+	for (uint32_t i = 0; i < list_size; ++i) {
+		uint8_t type;
+		receive(type);
+		std::variant<struct BombPlaced, struct BombExploded,
+				struct PlayerMoved, struct BlockPlaced> data;
+		Event list_element(EventType::BombPlaced, data);
+
+		receive_event((EventType) type, list_element);
+
+		list.push_back(list_element);
+	}
 }
 
 template<typename T>
@@ -197,7 +245,7 @@ size_t Buffer::receive_game_started(struct GameStarted &message) {
 }
 size_t Buffer::receive_turn(struct Turn &message) {
 	receive(message.turn);
-	receive_list(message.events);
+	receive_event_list(message.events);
 	return get_read_size();
 }
 size_t Buffer::receive_game_ended(struct GameEnded &message) {
@@ -281,6 +329,7 @@ std::optional<ServerMessageToClient> Buffer::receive_from_server(size_t length) 
 	if (received != length) {
 		return {};
 	}
+	serverMessage->type = (ServerMessageToClientType) message;
 	return serverMessage;
 }
 

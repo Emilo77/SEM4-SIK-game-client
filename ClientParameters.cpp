@@ -74,7 +74,7 @@ static inline void compare_ip() {
 	//todo throw jesli błąd
 }
 
-
+//może zmienić parsowanie portu jako string
 void ClientParameters::check_parameters() {
 	int possible_port = -1;
 	const po::positional_options_description p; // empty positional options

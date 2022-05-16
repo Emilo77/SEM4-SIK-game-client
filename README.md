@@ -283,31 +283,6 @@ Pole `address` w strukturze `Player` może reprezentować zarówno adres IPv4, j
 
 Liczba typu `Score` informuje o tym, ile razy robot danego gracza został zniszczony.
 
-
-### 2.4. Generator liczb losowych
-
-Do wytwarzania wartości losowych należy użyć poniższego deterministycznego
-generatora liczb 32-bitowych. Kolejne wartości zwracane przez ten generator
-wyrażone są wzorem:
-
-    r_0 = (seed * 48271) mod 2147483647
-    r_i = (r_{i-1} * 48271) mod 2147483647
-
-
-gdzie wartość `seed` jest 32-bitowa i jest przekazywana do serwera za pomocą
-parametru `-s`. Jeśli ten parametr nie jest zdefiniowany, można jako wartości 
-domyślnej użyć dowolnej liczby, która będzie zmieniać się przy każdym uruchomieniu, np. 
-`unsigned seed = time(NULL)` (C) 
-lub `unsigned seed = std::chrono::system_clock::now().time_since_epoch().count()` (C++).
-
-Powyższy generator odpowiada generatorowi `std::minstd_rand`.
-
-Należy użyć dokładnie takiego generatora, żeby umożliwić automatyczne testowanie
-rozwiązania (uwaga na konieczność wykonywania pośrednich obliczeń na typie
-64-bitowym).
-
-Przykłady użycia generatora zostały podane w plikach `c/random.c` oraz `cpp/random.cpp`.
-
 ### 2.5. Stan gry
 
 Serwer jest „zarządcą” stanu gry, do klientów przesyła informacje o zdarzeniach. Klienci je agregują

@@ -22,8 +22,8 @@ private:
 
 		std::cout << "          " <<"display_ip: " << display_ip << std::endl;
 		std::cout << "          " <<"server_ip: " << server_ip << std::endl;
-		std::cout << "          " <<"display_address: " << display_address << std::endl;
-		std::cout << "          " <<"server_address: " << server_address << std::endl;
+//		std::cout << "          " <<"display_address: " << display_address << std::endl;
+//		std::cout << "          " <<"server_address: " << server_address << std::endl;
 		std::cout << "          " <<"port: " << port << std::endl;
 		std::cout << "          " <<"player_name: " << player_name << std::endl;
 	}
