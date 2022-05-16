@@ -35,6 +35,18 @@ static inline void check_port(int possible_port) {
 	}
 }
 
+static inline void check_port_str(std::string &port_str) {
+	int possible_port;
+	try {
+		possible_port = boost::lexical_cast<int>(port_str);
+	} catch (boost::bad_lexical_cast &) {
+		std::cerr << "Invalid ip port" << std::endl;
+		throw po::validation_error(po::validation_error::invalid_option_value,
+		                           "ip port");
+	}
+	check_port(possible_port);
+}
+
 //todo może trzeba spradzić, czy porty takie same
 static inline void check_address(const std::string &address) {
 	if (address.empty()) {
@@ -51,18 +63,10 @@ static inline void check_address(const std::string &address) {
 }
 
 static inline void check_ip(std::string ip) {
-	int possible_port;
 	std::string address, port;
 	split_ip(ip, address, port);
 	check_address(address);
-	try {
-		possible_port = boost::lexical_cast<int>(port);
-	} catch (boost::bad_lexical_cast &) {
-		std::cerr << "Invalid ip port" << std::endl;
-		throw po::validation_error(po::validation_error::invalid_option_value,
-		                           "ip port");
-	}
-	check_port(possible_port);
+	check_port_str(port);
 }
 
 //porównywanie adresów ip
@@ -73,7 +77,6 @@ static inline void compare_ip() {
 
 void ClientParameters::check_parameters() {
 	int possible_port = -1;
-	std::string display_ip, server_ip;
 	const po::positional_options_description p; // empty positional options
 	po::options_description desc("Program Usage", 1024, 512);
 	try {
@@ -105,8 +108,6 @@ void ClientParameters::check_parameters() {
 			exit_program(0);
 		}
 
-		split_ip(display_ip, display_address, display_port);
-		split_ip(server_ip, server_address, server_port);
 		compare_ip();
 
 		po::notify(vm);
@@ -121,5 +122,5 @@ void ClientParameters::check_parameters() {
 	}
 	port = (uint16_t) possible_port;
 }
-//todo: czy program może przyjmować więcej losowych parametrów?
+
 //todo: czy --gui-address może być skracane do postaci --gui?

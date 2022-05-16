@@ -19,6 +19,9 @@ private:
 
 	void print_parameters() const {
 		std::cout << "ClientParameters: " << std::endl;
+
+		std::cout << "          " <<"display_ip: " << display_ip << std::endl;
+		std::cout << "          " <<"server_ip: " << server_ip << std::endl;
 		std::cout << "          " <<"display_address: " << display_address << std::endl;
 		std::cout << "          " <<"server_address: " << server_address << std::endl;
 		std::cout << "          " <<"port: " << port << std::endl;
@@ -26,6 +29,8 @@ private:
 	}
 
 public:
+	std::string display_ip; //może potem zamienić na inny typ
+	std::string server_ip;
 	std::string display_address; //może potem zamienić na inny typ
 	std::string server_address;
 	uint16_t display_port;
