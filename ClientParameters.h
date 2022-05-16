@@ -28,6 +28,8 @@ private:
 public:
 	std::string display_address; //może potem zamienić na inny typ
 	std::string server_address;
+	uint16_t display_port;
+	uint16_t server_port;
 	std::string player_name;
 	uint16_t port{0};
 

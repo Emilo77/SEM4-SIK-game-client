@@ -30,20 +30,23 @@ void split_ip(std::string &ip, std::string &address, std::string &port) {
 
 static inline void check_port(int possible_port) {
 	if (possible_port < 0 || possible_port > 65535) {
-		std::cerr << "Invalid port" << std::endl;
-		throw po::validation_error(po::validation_error::invalid_option_value);
+		throw po::validation_error(po::validation_error::invalid_option_value,
+		                           "port");
 	}
 }
+
 //todo może trzeba spradzić, czy porty takie same
 static inline void check_address(const std::string &address) {
 	if (address.empty()) {
-		throw po::validation_error(po::validation_error::invalid_option_value);
+		throw po::validation_error(po::validation_error::invalid_option_value,
+		                           "address");
 	}
 	boost::system::error_code ec;
 	boost::asio::ip::address::from_string(address, ec);
 	if (ec) {
 		std::cerr << "Invalid ip address" << std::endl;
-		throw po::validation_error(po::validation_error::invalid_option_value);
+		throw po::validation_error(po::validation_error::invalid_option_value,
+		                           "ip address");
 	}
 }
 
@@ -56,21 +59,28 @@ static inline void check_ip(std::string ip) {
 		possible_port = boost::lexical_cast<int>(port);
 	} catch (boost::bad_lexical_cast &) {
 		std::cerr << "Invalid ip port" << std::endl;
-		throw po::validation_error(po::validation_error::invalid_option_value);
+		throw po::validation_error(po::validation_error::invalid_option_value,
+		                           "ip port");
 	}
 	check_port(possible_port);
+}
+
+//porównywanie adresów ip
+static inline void compare_ip() {
+	//todo throw jesli błąd
 }
 
 
 void ClientParameters::check_parameters() {
 	int possible_port = -1;
+	std::string display_ip, server_ip;
 	const po::positional_options_description p; // empty positional options
 	po::options_description desc("Program Usage", 1024, 512);
 	try {
 		desc.add_options()
 				("help,h", "produce help message")
 				("gui-address,d",
-				 po::value<std::string>(&display_address)->required()->notifier(
+				 po::value<std::string>(&display_ip)->required()->notifier(
 						 &check_ip),
 				 "set the gui address")
 				("player-name,n",
@@ -80,7 +90,7 @@ void ClientParameters::check_parameters() {
 						 &check_port),
 				 "set the port number")
 				("server-address,s",
-				 po::value<std::string>(&server_address)->required()->notifier(
+				 po::value<std::string>(&server_ip)->required()->notifier(
 						 &check_ip),
 				 "set the server address");
 
@@ -94,6 +104,10 @@ void ClientParameters::check_parameters() {
 			std::cout << desc << "\n";
 			exit_program(0);
 		}
+
+		split_ip(display_ip, display_address, display_port);
+		split_ip(server_ip, server_address, server_port);
+		compare_ip();
 
 		po::notify(vm);
 	}
