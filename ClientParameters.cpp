@@ -1,113 +1,111 @@
 #include "ClientParameters.h"
-#include <iostream>
-#include <fstream>
+
 
 namespace po = boost::program_options;
-using namespace std;
-
-void ClientParameters::exit_program(ClientParameters::wrong_parameters) {
-
-}
 
 // A helper function to simplify the main part.
 template<class T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& v)
-{
+std::ostream &operator<<(std::ostream &os, const std::vector<T> &v) {
 	copy(v.begin(), v.end(), ostream_iterator<T>(os, " "));
 	return os;
 }
 
-void ClientParameters::check_parameters() {
-	try {
-		int opt;
-		string config_file;
-
-		// Declare a group of options that will be
-		// allowed only on command line
-		po::options_description generic("Generic options");
-		generic.add_options()
-		        ("version,v", "print version string")
-		                ("help", "produce help message")
-		                        ("config,c", po::value<std::string>(&config_file)->default_value("Essa dziala"),
-		                         "name of a file of a configuration.")
-		        ;
-
-		// Declare a group of options that will be
-		// allowed both on command line and in
-		// config file
-		po::options_description config("Configuration");
-		config.add_options()
-		        ("optimization", po::value<int>(&opt)->default_value(10),
-		         "optimization level")
-		                ("include-path,I",
-		                 po::value< vector<string> >()->composing(),
-		                 "include path")
-		        ;
-
-		// Hidden options, will be allowed both on command line and
-		// in config file, but will not be shown to the user.
-		po::options_description hidden("Hidden options");
-		hidden.add_options()
-		        ("input-file", po::value< vector<string> >(), "input file")
-		        ;
-
-
-		po::options_description cmdline_options;
-		cmdline_options.add(generic).add(config).add(hidden);
-
-		po::options_description config_file_options;
-		config_file_options.add(config).add(hidden);
-
-		po::options_description visible("Allowed options");
-		visible.add(generic).add(config);
-
-		po::positional_options_description p;
-		p.add("input-file", -1);
-
-		po::variables_map vm;
-		store(po::command_line_parser(argc, argv).
-		      options(cmdline_options).positional(p).run(), vm);
-		notify(vm);
-
-		std::ifstream ifs(config_file.c_str());
-		if (!ifs)
-		{
-			cout << "can not open config file: " << config_file << "\n";
-			return;
-		}
-		else
-		{
-			store(parse_config_file(ifs, config_file_options), vm);
-			notify(vm);
-		}
-
-		if (vm.count("help")) {
-			cout << visible << "\n";
-			return;
-		}
-
-		if (vm.count("version")) {
-			cout << "Multiple sources example, version 1.0\n";
-			return;
-		}
-
-		if (vm.count("include-path"))
-		{
-			cout << "Include paths are: "
-			     << vm["include-path"].as< vector<string> >() << "\n";
-		}
-
-		if (vm.count("input-file"))
-		{
-			cout << "Input files are: "
-			     << vm["input-file"].as< vector<string> >() << "\n";
-		}
-
-		cout << "Optimization level is " << opt << "\n";
+void exit_program(int status) {
+	if (status) {
+		std::cerr << "Consider using -h [--help] command" << std::endl;
 	}
-	catch(exception& e)
-	{
-		cout << e.what() << "\n";
+	exit(status);
+}
+
+void split_ip(std::string &ip, std::string &address, std::string &port) {
+	size_t pos = ip.find_last_of(':');
+	if (pos == std::string::npos) {
 		return;
+	} else {
+		address = ip.substr(0, pos);
+		port = ip.substr(pos + 1);
 	}
 }
+
+
+static inline void check_port(int possible_port) {
+	if (possible_port < 0 || possible_port > 65535) {
+		std::cerr << "Invalid port" << std::endl;
+		throw po::validation_error(po::validation_error::invalid_option_value);
+	}
+}
+//todo może trzeba spradzić, czy porty takie same
+static inline void check_address(const std::string &address) {
+	if (address.empty()) {
+		throw po::validation_error(po::validation_error::invalid_option_value);
+	}
+	boost::system::error_code ec;
+	boost::asio::ip::address::from_string(address, ec);
+	if (ec) {
+		std::cerr << "Invalid ip address" << std::endl;
+		throw po::validation_error(po::validation_error::invalid_option_value);
+	}
+}
+
+static inline void check_ip(std::string ip) {
+	int possible_port;
+	std::string address, port;
+	split_ip(ip, address, port);
+	check_address(address);
+	try {
+		possible_port = boost::lexical_cast<int>(port);
+	} catch (boost::bad_lexical_cast &) {
+		std::cerr << "Invalid ip port" << std::endl;
+		throw po::validation_error(po::validation_error::invalid_option_value);
+	}
+	check_port(possible_port);
+}
+
+
+void ClientParameters::check_parameters() {
+	int possible_port = -1;
+	const po::positional_options_description p; // empty positional options
+	po::options_description desc("Program Usage", 1024, 512);
+	try {
+		desc.add_options()
+				("help,h", "produce help message")
+				("gui-address,d",
+				 po::value<std::string>(&display_address)->required()->notifier(
+						 &check_ip),
+				 "set the gui address")
+				("player-name,n",
+				 po::value<std::string>(&player_name)->required(),
+				 "set the player name")
+				("port,p", po::value<int>(&possible_port)->required()->notifier(
+						 &check_port),
+				 "set the port number")
+				("server-address,s",
+				 po::value<std::string>(&server_address)->required()->notifier(
+						 &check_ip),
+				 "set the server address");
+
+		po::variables_map vm;
+		po::store(po::command_line_parser(argc, argv).
+				options(desc).
+				positional(p).
+				run(), vm);
+
+		if (vm.count("help")) {
+			std::cout << desc << "\n";
+			exit_program(0);
+		}
+
+		po::notify(vm);
+	}
+	catch (std::exception &e) {
+		std::cerr << "Error: " << e.what() << "\n";
+		exit_program(1);
+	}
+	catch (...) {
+		std::cerr << "Unknown error!" << "\n";
+		exit_program(1);
+	}
+	port = (uint16_t) possible_port;
+}
+//todo: czy program może przyjmować więcej losowych parametrów?
+//todo: czy --gui-address może być skracane do postaci --gui?
