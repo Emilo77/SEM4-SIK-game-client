@@ -6,6 +6,7 @@
 #define ZADANIE02_CLIENT_GAMEINFO_H
 
 #include <string>
+#include <set>
 #include "Utils.h"
 
 
@@ -25,9 +26,9 @@ private:
 	//Gameplay state
 	uint16_t turn{0};
 	std::map<player_id_t, Position> player_positions;
-	std::list<Position> blocks;
-	std::list<Bomb> bombs;
-	std::list<Position> explosions;
+	std::set<Position> blocks;
+	std::vector<Bomb> bombs;
+	std::vector<Position> explosions;
 	std::map<player_id_t, score_t> scores;
 
 	void restart_info();
@@ -44,15 +45,24 @@ private:
 
 	void apply_GameEnded(struct GameEnded &message);
 
-	void place_bomb(Position position);
+	void apply_BombPlaced(struct BombPlaced &data);
+
+	void apply_BombExploded(struct BombExploded &data);
+
+	void apply_PlayerMoved(struct PlayerMoved &data);
+
+	void apply_BlockPlaced(struct BlockPlaced &data);
 
 
 public:
 
 	void apply_changes_from_server(ServerMessageToClient &msg);
 
+	bool is_gameplay() { return game_state == Gameplay; }
 
+	struct Lobby create_lobby_msg();
 
+	struct GamePlay create_gameplay_msg();
 };
 
 

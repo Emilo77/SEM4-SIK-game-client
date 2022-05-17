@@ -10,7 +10,7 @@ class Client {
 private:
 	ClientParameters parameters;
 	Buffer buffer;
-	GameInfo gameInfo;
+	GameInfo game_info;
 	bool finish{false};
 
 	void send_to_display();
@@ -30,6 +30,10 @@ private:
 
 	std::optional<ServerMessageToClient>
 	get_server_msg_from_buffer(size_t length);
+
+	ClientMessageToDisplay prepare_msg_to_display();
+
+	ClientMessageToServer prepare_msg_to_server(DisplayMessageToClient &message);
 
 
 	void handle_message_from_server(size_t length);

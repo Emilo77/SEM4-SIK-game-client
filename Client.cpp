@@ -5,10 +5,13 @@ void Client::bind_sockets() {
 
 void Client::receive_from_dislay() {
 }
+
 void Client::receive_from_server() {
 }
+
 void Client::send_to_display() {
 }
+
 void Client::send_to_server() {
 }
 
@@ -18,7 +21,7 @@ void Client::initialize() {
 
 void Client::run() {
 	std::cout << "Client is running" << std::endl;
-	while(!finish) {
+	while (!finish) {
 
 	}
 
@@ -34,7 +37,7 @@ void Client::handle_message_from_display(size_t length) {
 void Client::handle_message_from_server(size_t length) {
 	auto message = buffer.receive_from_server(length);
 	if (message.has_value()) {
-		gameInfo.apply_changes_from_server(message.value());
+		game_info.apply_changes_from_server(message.value());
 	}
 }
 
@@ -81,7 +84,8 @@ Client::get_server_msg_from_buffer(size_t length) {
 					std::get<struct GameStarted>(serverMessage->data));
 			break;
 		case Turn:
-			received = buffer.receive_turn(std::get<struct Turn>(serverMessage->data));
+			received = buffer.receive_turn(
+					std::get<struct Turn>(serverMessage->data));
 			break;
 		case GameEnded:
 			received = buffer.receive_game_ended(
@@ -127,3 +131,39 @@ Client::get_display_msg_from_buffer(size_t length) {
 	message->type = (DisplayMessageToClientType) message_type;
 	return message;
 }
+
+ClientMessageToDisplay Client::prepare_msg_to_display() {
+	ClientMessageToDisplay new_message;
+	if (!game_info.is_gameplay()) {
+		new_message.state = GameState::Lobby;
+		new_message.data = game_info.create_lobby_msg();
+	} else {
+		new_message.state = GameState::Gameplay;
+		new_message.data = game_info.create_gameplay_msg();
+	}
+
+	return new_message;
+}
+
+ClientMessageToServer Client::prepare_msg_to_server(DisplayMessageToClient &message) {
+	ClientMessageToServer new_message;
+	if (game_info.is_gameplay()) {
+		switch (message.type) {
+			case PlaceBombDisplay:
+				new_message.type = ClientMessageToServerType::PlaceBombServer;
+				break;
+			case PlaceBlockDisplay:
+				new_message.type = ClientMessageToServerType::PlaceBlockServer;
+				break;
+			case MoveDisplay:
+				new_message.type = ClientMessageToServerType::MoveServer;
+				new_message.data = message.direction;
+				break;
+		}
+	} else {
+		new_message.type = ClientMessageToServerType::JoinServer;
+		new_message.data = parameters.player_name;
+	}
+	return new_message;
+}
+

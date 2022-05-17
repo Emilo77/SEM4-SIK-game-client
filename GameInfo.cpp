@@ -1,7 +1,7 @@
 #include "GameInfo.h"
 
 void GameInfo::apply_changes_from_server(ServerMessageToClient &msg) {
-	switch(msg.type) {
+	switch (msg.type) {
 		case Hello:
 			apply_Hello(std::get<struct Hello>(msg.data));
 			break;
@@ -43,7 +43,7 @@ void GameInfo::apply_GameStarted(struct GameStarted &message) {
 
 void GameInfo::apply_Turn(struct Turn &message) {
 	turn = message.turn;
-	for(auto &event : message.events) {
+	for (auto &event: message.events) {
 		apply_event(event);
 	}
 }
@@ -52,12 +52,33 @@ void GameInfo::apply_GameEnded(struct GameEnded &message) {
 	scores = message.scores;
 }
 
-void GameInfo::place_bomb(Position position) {
-
+void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
+	bombs.emplace_back(data.bomb_id, data.position);
 }
 
+void GameInfo::apply_BombExploded(struct BombExploded &data) {
+	//calculate exploded blocks
+
+	for (auto robot_id: data.robots_destroyed) {
+		scores.at(robot_id)++;
+	}
+	for (auto block: data.blocks_destroyed) {
+		blocks.erase(block);
+	}
+}
+
+void GameInfo::apply_PlayerMoved(struct PlayerMoved &data) {
+	player_positions.at(data.player_id) = data.position;
+}
+
+
+void GameInfo::apply_BlockPlaced(struct BlockPlaced &data) {
+	blocks.insert(data.position);
+}
+
+
 void GameInfo::apply_event(Event &event) {
-	switch(event.type) {
+	switch (event.type) {
 		case BombPlaced:
 			break;
 		case BombExploded:
@@ -79,4 +100,12 @@ void GameInfo::restart_info() {
 	bombs.clear();
 	explosions.clear();
 	scores.clear();
+}
+
+struct Lobby GameInfo::create_lobby_msg() {
+	return {};
+}
+
+struct GamePlay GameInfo::create_gameplay_msg() {
+	return {};
 }

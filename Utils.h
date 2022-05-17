@@ -29,6 +29,26 @@ struct Position {
 	bool operator!=(const Position &rhs) const {
 		return !(x == rhs.x && y == rhs.y);
 	}
+
+	bool operator<(const Position &rhs) const {
+		if (x < rhs.x)
+			return true;
+		if (rhs.x < x)
+			return false;
+		return y < rhs.y;
+	}
+
+	bool operator>(const Position &rhs) const {
+		return rhs < *this;
+	}
+
+	bool operator<=(const Position &rhs) const {
+		return !(rhs < *this);
+	}
+
+	bool operator>=(const Position &rhs) const {
+		return !(*this < rhs);
+	}
 };
 
 enum EventType {
@@ -41,8 +61,11 @@ enum EventType {
 class Bomb {
 public:
 	bomb_id_t bomb_id;
-	uint16_t timer;
 	Position position;
+
+	Bomb(bomb_id_t bomb_id, Position position)
+			: bomb_id(bomb_id),
+			  position(position) {}
 
 	bool operator<(const Bomb &rhs) const { return bomb_id < rhs.bomb_id; }
 };
