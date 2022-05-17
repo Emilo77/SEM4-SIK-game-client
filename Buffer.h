@@ -29,7 +29,6 @@ private:
 
 	//RAW RECEIVES
 	void receive_raw(std::string &str, size_t str_size);
-public:
 	//INSERTS WITH TASK CONVENTION
 	template<typename T>
 	void insert(T number);
@@ -78,8 +77,8 @@ public:
 	size_t receive_game_ended(struct GameEnded &message);
 
 	// SENDING TO DISPLAY
-	void send_lobby(struct Lobby &message);
-	void send_game(struct GamePlay &message);
+	void send_lobby(Lobby &message);
+	void send_game(GamePlay &message);
 
 public:
 	void reset_read_index() { read_index = 0; }

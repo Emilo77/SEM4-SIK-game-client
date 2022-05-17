@@ -59,7 +59,7 @@ struct GameEnded {
 };
 
 
-struct Lobby {
+typedef struct Lobby {
 	std::string server_name;
 	uint8_t players_count;
 	uint16_t size_x;
@@ -80,9 +80,9 @@ struct Lobby {
 			  explosion_radius(explosionRadius),
 			  bomb_timer(bombTimer),
 			  players(players) {}
-};
+} Lobby;
 
-struct GamePlay {
+typedef struct GamePlay {
 	std::string server_name;
 	uint16_t size_x;
 	uint16_t size_y;
@@ -114,31 +114,31 @@ struct GamePlay {
 			  bombs(bombs),
 			  explosions(explosions),
 			  scores(scores) {}
-};
+} GamePlay;
 
 
-struct ServerMessageToClient {
+typedef struct ServerMessageToClient {
 	ServerMessageToClientType type;
 	std::variant<struct Hello, struct AcceptedPlayer,
 			struct GameStarted, struct Turn, struct GameEnded>
 			data;
-};
+} ServerMessageToClient;
 
-struct DisplayMessageToClient {
+typedef struct DisplayMessageToClient {
 	DisplayMessageToClientType type;
 	Direction direction;
-};
+} DisplayMessageToClient;
 
-struct ClientMessageToServer {
+typedef struct ClientMessageToServer {
 	ClientMessageToServerType type;
 	std::variant<std::string, Direction> data;
-};
+} ClientMessageToServer;
 
 
-struct ClientMessageToDisplay {
+typedef struct ClientMessageToDisplay {
 	GameState state;
 	std::variant<struct Lobby, struct GamePlay> data;
-};
+} ClientMessageToDisplay;
 
 
 #endif //ZADANIE02_CLIENT_MESSAGES_H

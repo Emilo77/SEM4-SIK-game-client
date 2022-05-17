@@ -248,9 +248,9 @@ size_t Buffer::receive_game_ended(struct GameEnded &message) {
 	return get_read_size();
 }
 
-void Buffer::send_lobby(struct Lobby &message) {
+void Buffer::send_lobby(Lobby &message) {
 	reset_send_index();
-	insert((uint8_t) GameState::Lobby);
+	insert((uint8_t) GameState::LobbyState);
 
 	insert(message.server_name);
 	insert(message.players_count);
@@ -262,9 +262,9 @@ void Buffer::send_lobby(struct Lobby &message) {
 	insert_map(message.players);
 }
 
-void Buffer::send_game(struct GamePlay &message) {
+void Buffer::send_game(GamePlay &message) {
 	reset_send_index();
-	insert((uint8_t) GameState::Gameplay);
+	insert((uint8_t) GameState::GameplayState);
 
 	insert(message.server_name);
 	insert(message.size_x);
@@ -325,7 +325,8 @@ Buffer::receive_msg_from_server(size_t length) {
 					std::get<struct Turn>(serverMessage->data));
 			break;
 		case GameEnded:
-			received = receive_game_ended(std::get<struct GameEnded>(serverMessage->data));
+			received = receive_game_ended(
+					std::get<struct GameEnded>(serverMessage->data));
 			break;
 	}
 	if (received != length) {
@@ -337,11 +338,11 @@ Buffer::receive_msg_from_server(size_t length) {
 
 size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {
 	switch (drawMessage.state) {
-		case Lobby:
-			send_lobby(std::get<struct Lobby>(drawMessage.data));
+		case LobbyState:
+			send_lobby(std::get<Lobby>(drawMessage.data));
 			break;
-		case Gameplay:
-			send_game(std::get<struct GamePlay>(drawMessage.data));
+		case GameplayState:
+			send_game(std::get<GamePlay>(drawMessage.data));
 			break;
 	}
 	return 0;

@@ -36,7 +36,7 @@ void GameInfo::apply_AcceptedPlayer(struct AcceptedPlayer &message) {
 }
 
 void GameInfo::apply_GameStarted(struct GameStarted &message) {
-	game_state = GameState::Gameplay;
+	game_state = GameState::GameplayState;
 	players.clear();
 	players = message.players;
 }
@@ -63,7 +63,11 @@ void GameInfo::apply_BombExploded(struct BombExploded &data) {
 	//calculate exploded blocks
 
 	for (auto robot_id: data.robots_destroyed) {
-		scores.at(robot_id)++;
+		if (scores.find(robot_id) == scores.end()) {
+			std::cerr << "Player not found!" << std::endl;
+		} else {
+			scores.at(robot_id)++;
+		}
 	}
 	for (auto block: data.blocks_destroyed) {
 //		blocks.erase(block);
@@ -71,7 +75,12 @@ void GameInfo::apply_BombExploded(struct BombExploded &data) {
 }
 
 void GameInfo::apply_PlayerMoved(struct PlayerMoved &data) {
-	player_positions.at(data.player_id) = data.position;
+	if (scores.find(data.player_id) == scores.end()) {
+		std::cerr << "Player not found!" << std::endl;
+	} else {
+		player_positions.at(data.player_id) = data.position;
+	}
+
 }
 
 
@@ -98,7 +107,7 @@ void GameInfo::apply_event(Event &event) {
 
 
 void GameInfo::restart_info() {
-	game_state = GameState::Lobby;
+	game_state = GameState::LobbyState;
 	server_name.clear();
 	players.clear();
 	player_positions.clear();
@@ -108,7 +117,7 @@ void GameInfo::restart_info() {
 	scores.clear();
 }
 
-struct Lobby GameInfo::create_lobby_msg() {
+Lobby GameInfo::create_lobby_msg() {
 	return {server_name, players_count, size_x, size_y, game_length,
 	        explosion_radius, bomb_timer, players};
 }

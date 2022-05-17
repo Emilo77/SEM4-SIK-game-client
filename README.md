@@ -62,7 +62,7 @@ W każdej turze robot może:
 
 Gra toczy się cyklicznie - po uzbieraniu się odpowiedniej liczby graczy
 rozpoczyna się nowa rozgrywka na tym samym serwerze.
-Stan gry przed rozpoczęciem rozgrywki będziemy nazywać `Lobby`.
+Stan gry przed rozpoczęciem rozgrywki będziemy nazywać `LobbyState`.
 
 ### 1.2. Architektura rozwiązania
 
@@ -185,7 +185,7 @@ Wiadomość `MoveServer(Down)` zserializowana zostanie jako ciąg bajtów `[3, 2
 Klient po podłączeniu się do serwera zaczyna obserwować rozgrywkę, jeżeli ta jest w toku.
 W przeciwnym razie może zgłosić chęć wzięcia w niej udziału, wysyłając komunikat `JoinServer`.
 
-Serwer ignoruje komunikaty `JoinServer` wysłane w trakcie rozgrywki. Serwer ignoruje również komunikaty typu innego niż `JoinServer` w `Lobby`.
+Serwer ignoruje komunikaty `JoinServer` wysłane w trakcie rozgrywki. Serwer ignoruje również komunikaty typu innego niż `JoinServer` w `LobbyState`.
 
 
 ### 2.2. Komunikaty od serwera do klienta
@@ -309,7 +309,7 @@ Klient powinien przechowywać zagregowany stan tak, aby móc wysyłać komunikat
 
 ### 2.6. Podłączanie i odłączanie klientów
 
-Klient wysyła komunikat `JoinServer` do serwera po otrzymaniu dowolnego (poprawnego) komunikatu od GUI, o ile klient jest w stanie `Lobby` (tzn. nie otrzymał od serwera komunikatu `GameStarted`).
+Klient wysyła komunikat `JoinServer` do serwera po otrzymaniu dowolnego (poprawnego) komunikatu od GUI, o ile klient jest w stanie `LobbyState` (tzn. nie otrzymał od serwera komunikatu `GameStarted`).
 
 Po podłączeniu klienta do serwera serwer wysyła do niego komunikat `Hello`.
 Jeśli rozgrywka jeszcze nie została rozpoczęta,
@@ -464,7 +464,7 @@ To serwer decyduje o tym, czy dany ruch jest dozwolony czy nie. Jeśli gracz sto
 
 ### 2.10. Kończenie rozgrywki
 
-Po `game_length` turach serwer wysyła do wszystkich klientów wiadomość `GameEnded` i wraca do stanu `Lobby`. Klienci, którzy byli do tej pory graczami, przestają nimi być, ale oczywiście mogą się z powrotem zgłosić przy pomocy komunikatu `JoinServer`. Wszystkie komunikaty otrzymane w czasie ostatniej tury rozgrywki są ignorowane.
+Po `game_length` turach serwer wysyła do wszystkich klientów wiadomość `GameEnded` i wraca do stanu `LobbyState`. Klienci, którzy byli do tej pory graczami, przestają nimi być, ale oczywiście mogą się z powrotem zgłosić przy pomocy komunikatu `JoinServer`. Wszystkie komunikaty otrzymane w czasie ostatniej tury rozgrywki są ignorowane.
 
 ### 2.11. Błędy w komunikacji
 
@@ -479,7 +479,7 @@ Klient wysyła do interfejsu graficznego następujące komunikaty:
 
 ```
 enum ClientMessageToDisplay {
-    [0] Lobby {
+    [0] LobbyState {
         server_name: String,
         players_count: u8,
         size_x: u16,
@@ -616,7 +616,7 @@ Testy będą obejmowały m.in.:
 - O: Tak
 - P: Kiedy mamy zapomnieć o istnieniu danego klienta? Jeśli dobrze rozumiem, to jeśli obserwator (czyli ktoś, kto nawiązał połączenie TCP z serwerem, ale nie wysłał jeszcze komunikatu JoinServer) się odłączy to możemy zapomnieć o nim. Jeśli gracz się odłączy to ślad po nim (tj. pozycja robota itp.) istnieje do końca obecnej gry, ale po jej zakończeniu, możemy o nim zapomnieć?
 - O: Dokładnie tak
-- P: Jeśli gra się jeszcze nie rozpoczęła i podłączy się nowy klient, to jak rozumiem, należy wysłać do niego komunikat Hello i serię komunikatów AcceptedPlayer, by poinformować o tym jacy są obecnie gracze w Lobby. Jeśli w odpowiedzi na to, klient prześle JoinServer to należy do wszystkich obserwatorów i graczy wysłać AcceptedPlayer, żeby wszyscy się dowiedzieli o nowym graczu. Dobrze rozumiem?
+- P: Jeśli gra się jeszcze nie rozpoczęła i podłączy się nowy klient, to jak rozumiem, należy wysłać do niego komunikat Hello i serię komunikatów AcceptedPlayer, by poinformować o tym jacy są obecnie gracze w LobbyState. Jeśli w odpowiedzi na to, klient prześle JoinServer to należy do wszystkich obserwatorów i graczy wysłać AcceptedPlayer, żeby wszyscy się dowiedzieli o nowym graczu. Dobrze rozumiem?
 - O: Tak właśnie
 - P: Co jeśli wybuchnie bomba, a na jej "drodze wybuchu" będzie znajdować się inna bomba?
 - O: Nic (to znaczy wybuch jednej bomby nie powoduje wybuchu innych bomb ani ich nie niszczy)

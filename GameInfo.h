@@ -6,10 +6,11 @@
 #include <map>
 #include "Utils.h"
 #include "Messages.h"
+#include <iostream>
 
 class GameInfo {
 private:
-	enum GameState game_state{Lobby};
+	enum GameState game_state{LobbyState};
 	std::string server_name{};
 	uint8_t players_count{0};
 	uint16_t size_x{0};
@@ -19,7 +20,7 @@ private:
 	uint16_t bomb_timer{0};
 	std::map<player_id_t, Player> players;
 
-	//Gameplay state
+	//GameplayState state
 	uint16_t turn{0};
 	std::map<player_id_t, Position> player_positions;
 	std::vector<Position> blocks;
@@ -54,11 +55,11 @@ public:
 
 	void apply_changes_from_server(ServerMessageToClient &msg);
 
-	bool is_gameplay() { return game_state == Gameplay; }
+	bool is_gameplay() { return game_state == GameplayState; }
 
-	struct Lobby create_lobby_msg();
+	Lobby create_lobby_msg();
 
-	struct GamePlay create_gameplay_msg();
+	GamePlay create_gameplay_msg();
 };
 
 

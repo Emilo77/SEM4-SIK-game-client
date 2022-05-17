@@ -19,8 +19,8 @@ enum Direction {
 };
 
 enum GameState {
-	Lobby = 0,
-	Gameplay = 1,
+	LobbyState = 0,
+	GameplayState = 1,
 };
 
 
