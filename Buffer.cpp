@@ -42,11 +42,6 @@ void Buffer::insert_raw(const string &str) {
 	send_index += size;
 }
 
-void Buffer::insert(ClientMessageToServerType message) {insert((uint8_t) message);
-}
-
-void Buffer::insert(GameState state) { insert((uint8_t) state); }
-
 void Buffer::insert(Direction direction) { insert((uint8_t) direction); }
 
 template<typename T>
@@ -62,7 +57,7 @@ void Buffer::receive_raw(string &str, size_t str_size) {
 }
 
 void Buffer::insert(Position &position) {
-	insert( position.x);
+	insert(position.x);
 	insert(position.y);
 }
 
@@ -158,30 +153,30 @@ void Buffer::receive_event(EventType type, Event &event) {
 	}
 }
 
-void Buffer::receive_event_list(std::list<Event> &list) {
-	size_t list_size;
-	receive(list_size);
-	for (uint32_t i = 0; i < list_size; ++i) {
+void Buffer::receive_event_list(std::vector<Event> &vector) {
+	size_t vector_size;
+	receive(vector_size);
+	for (uint32_t i = 0; i < vector_size; ++i) {
 		uint8_t type;
 		receive(type);
 		std::variant<struct BombPlaced, struct BombExploded,
 				struct PlayerMoved, struct BlockPlaced> data;
-		Event list_element(EventType::BombPlaced, data);
+		Event vector_element(EventType::BombPlaced, data);
 
-		receive_event((EventType) type, list_element);
+		receive_event((EventType) type, vector_element);
 
-		list.push_back(list_element);
+		vector.push_back(vector_element);
 	}
 }
 
 template<typename T>
-void Buffer::receive_list(std::list<T> &list) {
-	uint32_t list_size;
-	receive(list_size);
-	for (uint32_t i = 0; i < list_size; ++i) {
+void Buffer::receive_list(std::vector<T> &vector) {
+	uint32_t vector_size;
+	receive(vector_size);
+	for (uint32_t i = 0; i < vector_size; ++i) {
 		T list_element;
 		receive(list_element);
-		list.push_back(list_element);
+		vector.push_back(list_element);
 	}
 }
 
@@ -198,32 +193,29 @@ void Buffer::receive_map(std::map<T, U> &map) {
 	}
 }
 
-
 void Buffer::send_join(string &name) {
 	reset_send_index();
-	insert(ClientMessageToServerType::JoinServer);
+	insert((uint8_t) ClientMessageToServerType::JoinServer);
 	insert(name);
 }
 
 void Buffer::send_place_bomb() {
 	reset_send_index();
-	insert(ClientMessageToServerType::PlaceBombServer);
+	insert((uint8_t) ClientMessageToServerType::PlaceBombServer);
 }
 
 void Buffer::send_place_block() {
 	reset_send_index();
-	insert(ClientMessageToServerType::PlaceBlockServer);
+	insert((uint8_t) ClientMessageToServerType::PlaceBlockServer);
 }
 
 void Buffer::send_move(Direction direction) {
 	reset_send_index();
-	insert(ClientMessageToServerType::MoveServer);
+	insert((uint8_t) ClientMessageToServerType::MoveServer);
 	insert(direction);
 }
 
-
 size_t Buffer::receive_hello(struct Hello &message) {
-	reset_read_index();
 	receive(message.server_name);
 	receive(message.players_count);
 	receive(message.size_x);
@@ -233,21 +225,24 @@ size_t Buffer::receive_hello(struct Hello &message) {
 	receive(message.bomb_timer);
 	return get_read_size();
 }
+
 size_t Buffer::receive_accepted_player(struct AcceptedPlayer &message) {
-	reset_read_index();
 	receive(message.player_id);
 	receive(message.player);
 	return get_read_size();
 }
+
 size_t Buffer::receive_game_started(struct GameStarted &message) {
 	receive_map(message.players);
 	return get_read_size();
 }
+
 size_t Buffer::receive_turn(struct Turn &message) {
 	receive(message.turn);
 	receive_event_list(message.events);
 	return get_read_size();
 }
+
 size_t Buffer::receive_game_ended(struct GameEnded &message) {
 	receive_map(message.scores);
 	return get_read_size();
@@ -255,7 +250,7 @@ size_t Buffer::receive_game_ended(struct GameEnded &message) {
 
 void Buffer::send_lobby(struct Lobby &message) {
 	reset_send_index();
-	insert(GameState::Lobby);
+	insert((uint8_t) GameState::Lobby);
 
 	insert(message.server_name);
 	insert(message.players_count);
@@ -266,9 +261,10 @@ void Buffer::send_lobby(struct Lobby &message) {
 	insert(message.bomb_timer);
 	insert_map(message.players);
 }
+
 void Buffer::send_game(struct GamePlay &message) {
 	reset_send_index();
-	insert(GameState::Gameplay);
+	insert((uint8_t) GameState::Gameplay);
 
 	insert(message.server_name);
 	insert(message.size_x);
@@ -300,7 +296,9 @@ size_t Buffer::send_to_server(ClientMessageToServer &message) {
 	}
 	return get_send_size();
 }
-std::optional<ServerMessageToClient> Buffer::receive_from_server(size_t length) {
+
+std::optional<ServerMessageToClient>
+Buffer::receive_from_server(size_t length) {
 	auto serverMessage = std::optional<ServerMessageToClient>();
 	reset_read_index();
 	size_t received = 0;
@@ -311,19 +309,23 @@ std::optional<ServerMessageToClient> Buffer::receive_from_server(size_t length) 
 	}
 	switch ((ServerMessageToClientType) message) {
 		case Hello:
-			received = receive_hello(std::get<struct Hello>(serverMessage->data));
+			received = receive_hello(
+					std::get<struct Hello>(serverMessage->data));
 			break;
 		case AcceptedPlayer:
-			received = receive_accepted_player(std::get<struct AcceptedPlayer>(serverMessage->data));
+			received = receive_accepted_player(
+					std::get<struct AcceptedPlayer>(serverMessage->data));
 			break;
 		case GameStarted:
-			received = receive_game_started(std::get<struct GameStarted>(serverMessage->data));
+			received = receive_game_started(
+					std::get<struct GameStarted>(serverMessage->data));
 			break;
 		case Turn:
 			received = receive_turn(std::get<struct Turn>(serverMessage->data));
 			break;
 		case GameEnded:
-			received = receive_game_ended(std::get<struct GameEnded>(serverMessage->data));
+			received = receive_game_ended(
+					std::get<struct GameEnded>(serverMessage->data));
 			break;
 	}
 	if (received != length) {
@@ -344,7 +346,9 @@ size_t Buffer::send_to_display(ClientMessageToDisplay &drawMessage) {
 	}
 	return 0;
 }
-std::optional<DisplayMessageToClient> Buffer::receive_from_display(size_t length) {
+
+std::optional<DisplayMessageToClient>
+Buffer::receive_from_display(size_t length) {
 	auto message = std::optional<DisplayMessageToClient>();
 	reset_read_index();
 	uint8_t message_type;
@@ -364,6 +368,3 @@ std::optional<DisplayMessageToClient> Buffer::receive_from_display(size_t length
 	return message;
 }
 
-
-//todo: stworzyć listę eventów i je tam dodawać
-//todo: rozwiązać problem z dziedziczeniem po klasie Event

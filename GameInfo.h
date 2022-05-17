@@ -44,9 +44,6 @@ private:
 
 	void apply_GameEnded(struct GameEnded &message);
 
-
-
-
 	void place_bomb(Position position);
 
 

@@ -35,8 +35,6 @@ private:
 	//INSERTS WITH TASK CONVENTION
 	template<typename T>
 	void insert(T number);
-	void insert(ClientMessageToServerType message);
-	void insert(GameState state);
 	void insert(Direction direction);
 	void insert(const std::string &str);
 	void insert(Position &position);
@@ -61,9 +59,9 @@ private:
 	void receive_event_content(struct BlockPlaced &data);
 	void receive_event(EventType type, Event &event);
 
-	void receive_event_list(std::list<Event> &list);
+	void receive_event_list(std::vector<Event> &vector);
 	template<typename T>
-	void receive_list(std::list<T> &list);
+	void receive_list(std::vector<T> &vector);
 	template<typename T, typename U>
 	void receive_map(std::map<T, U> &map);
 

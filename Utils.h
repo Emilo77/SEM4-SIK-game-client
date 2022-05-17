@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 #include <variant>
+#include <vector>
 
 using player_id_t = uint8_t;
 using bomb_id_t = uint32_t;
@@ -53,8 +54,8 @@ struct BombPlaced {
 
 struct BombExploded {
 	uint8_t bomb_id;
-	std::list<uint8_t> robots_destroyed;
-	std::list<Position> blocks_destroyed;
+	std::vector<uint8_t> robots_destroyed;
+	std::vector<Position> blocks_destroyed;
 };
 
 struct PlayerMoved {
@@ -155,7 +156,7 @@ struct GameStarted {
 
 struct Turn {
 	uint16_t turn;
-	std::list<Event> events;
+	std::vector<Event> events;
 };
 
 struct GameEnded {
