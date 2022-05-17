@@ -13,19 +13,30 @@ private:
 	GameInfo gameInfo;
 	bool finish{false};
 
-	void bind_sockets();
+	void send_to_display();
+
+	void send_to_server();
 
 	void receive_from_dislay();
 
 	void receive_from_server();
 
-	void send_to_display();
+	size_t put_display_msg_to_buffer(ClientMessageToDisplay &drawMessage);
 
-	void send_to_server();
+	size_t put_server_msg_to_buffer(ClientMessageToServer &message);
+
+	std::optional<DisplayMessageToClient>
+	get_display_msg_from_buffer(size_t length);
+
+	std::optional<ServerMessageToClient>
+	get_server_msg_from_buffer(size_t length);
+
 
 	void handle_message_from_server(size_t length);
 
 	void handle_message_from_display(size_t length);
+
+	void bind_sockets();
 
 	void initialize();
 
@@ -33,6 +44,7 @@ public:
 	explicit Client(ClientParameters &parameters) : parameters(parameters) {
 		initialize();
 	}
+
 	void run();
 };
 

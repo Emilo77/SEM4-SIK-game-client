@@ -17,9 +17,6 @@ using std::string;
 
 class Buffer {
 private:
-	void reset_read_index() { read_index = 0; }
-	void reset_send_index() { send_index = 0; }
-
 	//CONVERTING NUMBERS
 	template<typename T>
 	T convert_to_send(T number);
@@ -31,7 +28,7 @@ private:
 
 	//RAW RECEIVES
 	void receive_raw(std::string &str, size_t str_size);
-
+public:
 	//INSERTS WITH TASK CONVENTION
 	template<typename T>
 	void insert(T number);
@@ -84,6 +81,9 @@ private:
 	void send_game(struct GamePlay &message);
 
 public:
+	void reset_read_index() { read_index = 0; }
+	void reset_send_index() { send_index = 0; }
+
 	size_t send_to_server(ClientMessageToServer &message);
 
 	size_t send_to_display(ClientMessageToDisplay &drawMessage);
