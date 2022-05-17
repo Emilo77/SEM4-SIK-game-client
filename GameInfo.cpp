@@ -46,6 +46,9 @@ void GameInfo::apply_Turn(struct Turn &message) {
 	for (auto &event: message.events) {
 		apply_event(event);
 	}
+	for (auto &bomb: bombs) {
+		bomb.decrease_timer();
+	}
 }
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
@@ -53,7 +56,7 @@ void GameInfo::apply_GameEnded(struct GameEnded &message) {
 }
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
-	bombs.emplace_back(data.bomb_id, data.position);
+	bombs.emplace_back(data.bomb_id, data.position, bomb_timer);
 }
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {
@@ -63,7 +66,7 @@ void GameInfo::apply_BombExploded(struct BombExploded &data) {
 		scores.at(robot_id)++;
 	}
 	for (auto block: data.blocks_destroyed) {
-		blocks.erase(block);
+//		blocks.erase(block);
 	}
 }
 
@@ -73,19 +76,22 @@ void GameInfo::apply_PlayerMoved(struct PlayerMoved &data) {
 
 
 void GameInfo::apply_BlockPlaced(struct BlockPlaced &data) {
-	blocks.insert(data.position);
+	blocks.emplace_back(data.position);
 }
-
 
 void GameInfo::apply_event(Event &event) {
 	switch (event.type) {
 		case BombPlaced:
+			apply_BombPlaced(std::get<struct BombPlaced>(event.data));
 			break;
 		case BombExploded:
+			apply_BombExploded(std::get<struct BombExploded>(event.data));
 			break;
 		case PlayerMoved:
+			apply_PlayerMoved(std::get<struct PlayerMoved>(event.data));
 			break;
 		case BlockPlaced:
+			apply_BlockPlaced(std::get<struct BlockPlaced>(event.data));
 			break;
 	}
 }
@@ -103,9 +109,11 @@ void GameInfo::restart_info() {
 }
 
 struct Lobby GameInfo::create_lobby_msg() {
-	return {};
+	return {server_name, players_count, size_x, size_y, game_length,
+	        explosion_radius, bomb_timer, players};
 }
 
 struct GamePlay GameInfo::create_gameplay_msg() {
-	return {};
+	return {server_name, size_x, size_y, game_length, turn, players,
+	        player_positions, blocks, bombs, explosions, scores};
 }

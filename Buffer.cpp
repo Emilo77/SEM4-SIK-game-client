@@ -78,7 +78,7 @@ void Buffer::insert(Bomb &bomb) {
 
 template<typename T>
 //todo ograniczenie na T, że musi być primitive
-void Buffer::insert_list(std::list<T> &list) {
+void Buffer::insert_list(std::vector<T> &list) {
 	insert((uint32_t) list.size());
 	for (T &list_element: list) {
 		insert(list_element);
@@ -275,4 +275,95 @@ void Buffer::send_game(struct GamePlay &message) {
 	insert_map(message.player_positions);
 	insert_list(message.blocks);
 	insert_list(message.bombs);
+}
+
+
+size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
+	reset_send_index();
+	switch (message.type) {
+		case ClientMessageToServerType::JoinServer:
+			send_join(std::get<string>(message.data));
+			break;
+		case ClientMessageToServerType::PlaceBombServer:
+			send_place_bomb();
+			break;
+		case ClientMessageToServerType::PlaceBlockServer:
+			send_place_block();
+			break;
+		case ClientMessageToServerType::MoveServer:
+			send_move(std::get<Direction>(message.data));
+			break;
+	}
+	return get_send_size();
+}
+
+std::optional<ServerMessageToClient>
+Buffer::receive_msg_from_server(size_t length) {
+	auto serverMessage = std::optional<ServerMessageToClient>();
+	reset_read_index();
+	size_t received = 0;
+	uint8_t message;
+	receive(message);
+	if (invalid_server_message_type(message)) {
+		return {};
+	}
+	switch ((ServerMessageToClientType) message) {
+		case Hello:
+			received = receive_hello(
+					std::get<struct Hello>(serverMessage->data));
+			break;
+		case AcceptedPlayer:
+			received = receive_accepted_player(
+					std::get<struct AcceptedPlayer>(serverMessage->data));
+			break;
+		case GameStarted:
+			received = receive_game_started(
+					std::get<struct GameStarted>(serverMessage->data));
+			break;
+		case Turn:
+			received = receive_turn(
+					std::get<struct Turn>(serverMessage->data));
+			break;
+		case GameEnded:
+			received = receive_game_ended(std::get<struct GameEnded>(serverMessage->data));
+			break;
+	}
+	if (received != length) {
+		return {};
+	}
+	serverMessage->type = (ServerMessageToClientType) message;
+	return serverMessage;
+}
+
+size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {
+	switch (drawMessage.state) {
+		case Lobby:
+			send_lobby(std::get<struct Lobby>(drawMessage.data));
+			break;
+		case Gameplay:
+			send_game(std::get<struct GamePlay>(drawMessage.data));
+			break;
+	}
+	return 0;
+}
+
+std::optional<DisplayMessageToClient>
+Buffer::receive_msg_from_display(size_t length) {
+	auto message = std::optional<DisplayMessageToClient>();
+	reset_read_index();
+	uint8_t message_type;
+	receive(message_type);
+	if (invalid_display_message_type(message_type)) {
+		return {};
+	}
+	if (message_type == DisplayMessageToClientType::MoveDisplay) {
+		uint8_t direction;
+		receive(direction);
+		if (invalid_direction(direction)) {
+			return {};
+		}
+		message->direction = (Direction) direction;
+	}
+	message->type = (DisplayMessageToClientType) message_type;
+	return message;
 }

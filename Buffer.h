@@ -9,6 +9,7 @@
 
 #include "ClientParameters.h"
 #include "Utils.h"
+#include "Messages.h"
 #include <cstring>
 #include <optional>
 
@@ -38,7 +39,7 @@ public:
 	void insert(Player &player);
 	void insert(Bomb &bomb);
 	template<typename T>
-	void insert_list(std::list<T> &list);
+	void insert_list(std::vector<T> &list);
 	template<typename T, typename U>
 	void insert_map(std::map<T, U> &map);
 
@@ -84,13 +85,15 @@ public:
 	void reset_read_index() { read_index = 0; }
 	void reset_send_index() { send_index = 0; }
 
-	size_t send_to_server(ClientMessageToServer &message);
+	size_t insert_msg_to_server(ClientMessageToServer &message);
 
-	size_t send_to_display(ClientMessageToDisplay &drawMessage);
+	std::optional<ServerMessageToClient>
+	receive_msg_from_server(size_t length);
 
-	std::optional<ServerMessageToClient> receive_from_server(size_t length);
+	size_t insert_msg_to_display(ClientMessageToDisplay &drawMessage);
 
-	std::optional<DisplayMessageToClient> receive_from_display(size_t length);
+	std::optional<DisplayMessageToClient>
+	receive_msg_from_display(size_t length);
 
 	size_t get_send_size() const { return send_index; }
 

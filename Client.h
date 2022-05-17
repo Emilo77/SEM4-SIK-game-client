@@ -4,6 +4,7 @@
 #include "Buffer.h"
 #include "ClientParameters.h"
 #include "GameInfo.h"
+#include "Messages.h"
 #include <iostream>
 
 class Client {
@@ -20,16 +21,6 @@ private:
 	void receive_from_dislay();
 
 	void receive_from_server();
-
-	size_t put_display_msg_to_buffer(ClientMessageToDisplay &drawMessage);
-
-	size_t put_server_msg_to_buffer(ClientMessageToServer &message);
-
-	std::optional<DisplayMessageToClient>
-	get_display_msg_from_buffer(size_t length);
-
-	std::optional<ServerMessageToClient>
-	get_server_msg_from_buffer(size_t length);
 
 	ClientMessageToDisplay prepare_msg_to_display();
 

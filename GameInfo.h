@@ -1,15 +1,11 @@
-//
-// Created by emilo77 on 10.05.22.
-//
-
 #ifndef ZADANIE02_CLIENT_GAMEINFO_H
 #define ZADANIE02_CLIENT_GAMEINFO_H
 
 #include <string>
 #include <set>
+#include <map>
 #include "Utils.h"
-
-
+#include "Messages.h"
 
 class GameInfo {
 private:
@@ -26,7 +22,7 @@ private:
 	//Gameplay state
 	uint16_t turn{0};
 	std::map<player_id_t, Position> player_positions;
-	std::set<Position> blocks;
+	std::vector<Position> blocks;
 	std::vector<Bomb> bombs;
 	std::vector<Position> explosions;
 	std::map<player_id_t, score_t> scores;

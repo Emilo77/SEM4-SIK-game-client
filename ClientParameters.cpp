@@ -36,15 +36,17 @@ static inline void check_port(int possible_port) {
 }
 
 static inline void check_port_str(std::string &port_str) {
-	int possible_port;
 	try {
-		possible_port = boost::lexical_cast<int>(port_str);
+		boost::numeric_cast<uint16_t>(boost::lexical_cast<int>(port_str));
 	} catch (boost::bad_lexical_cast &) {
-		std::cerr << "Invalid ip port" << std::endl;
+		std::cerr << "Invalid port format in ip" << std::endl;
+		throw po::validation_error(po::validation_error::invalid_option_value,
+		                           "ip port");
+	} catch (boost::bad_numeric_cast &) {
+		std::cerr << "Port out of range in ip" << std::endl;
 		throw po::validation_error(po::validation_error::invalid_option_value,
 		                           "ip port");
 	}
-	check_port(possible_port);
 }
 
 //todo może trzeba spradzić, czy porty takie same
