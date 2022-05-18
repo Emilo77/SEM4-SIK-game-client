@@ -32,10 +32,11 @@ void GameInfo::apply_Hello(struct Hello &message) {
 }
 
 void GameInfo::apply_AcceptedPlayer(struct AcceptedPlayer &message) {
-	players.insert({message.player_id, message.player});
+	players.insert_or_assign(message.player_id, message.player);
 }
 
 void GameInfo::apply_GameStarted(struct GameStarted &message) {
+	board.reset(size_x, size_y);
 	game_state = GameState::GameplayState;
 	players.clear();
 	players = message.players;
@@ -46,9 +47,6 @@ void GameInfo::apply_Turn(struct Turn &message) {
 	for (auto &event: message.events) {
 		apply_event(event);
 	}
-	for (auto &bomb: bombs) {
-		bomb.decrease_timer();
-	}
 }
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
@@ -56,11 +54,12 @@ void GameInfo::apply_GameEnded(struct GameEnded &message) {
 }
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
-	bombs.emplace_back(data.bomb_id, data.position, bomb_timer);
+	bombs.insert({data.bomb_id, Bomb(data.bomb_id, data.position)});
 }
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {
-	//calculate exploded blocks
+	std::vector<Position> new_explosions = calculate_explosion(data);
+	explosions = new_explosions;
 
 	for (auto robot_id: data.robots_destroyed) {
 		if (scores.find(robot_id) == scores.end()) {
@@ -69,23 +68,25 @@ void GameInfo::apply_BombExploded(struct BombExploded &data) {
 			scores.at(robot_id)++;
 		}
 	}
-	for (auto block: data.blocks_destroyed) {
-//		blocks.erase(block);
+
+	for (auto &position: data.blocks_destroyed) {
+		board.explode_block(position);
 	}
+
+	bombs.erase(data.bomb_id);
 }
 
 void GameInfo::apply_PlayerMoved(struct PlayerMoved &data) {
-	if (scores.find(data.player_id) == scores.end()) {
+	if (players.find(data.player_id) == players.end()) {
 		std::cerr << "Player not found!" << std::endl;
 	} else {
 		player_positions.at(data.player_id) = data.position;
 	}
-
 }
 
 
 void GameInfo::apply_BlockPlaced(struct BlockPlaced &data) {
-	blocks.emplace_back(data.position);
+	board.place_block(data.position);
 }
 
 void GameInfo::apply_event(Event &event) {
@@ -107,14 +108,27 @@ void GameInfo::apply_event(Event &event) {
 
 
 void GameInfo::restart_info() {
+	board.reset(size_x, size_y);
 	game_state = GameState::LobbyState;
 	server_name.clear();
 	players.clear();
 	player_positions.clear();
-	blocks.clear();
 	bombs.clear();
-	explosions.clear();
 	scores.clear();
+}
+
+
+std::vector<Position> GameInfo::calculate_explosion(struct BombExploded &data) {
+	std::vector<Position> exploded;
+	Position bomb_pos = bombs.at(data.bomb_id).position;
+	exploded.push_back(bomb_pos);
+
+//	for(int i = 1; i <= explosion_radius; i++) {
+//
+//	}
+	//todo
+
+	return exploded;
 }
 
 Lobby GameInfo::create_lobby_msg() {
@@ -123,6 +137,12 @@ Lobby GameInfo::create_lobby_msg() {
 }
 
 struct GamePlay GameInfo::create_gameplay_msg() {
+	std::vector<Position> blocks = board.return_blocks();
+	std::vector<Bomb> bombs_vector;
+	for (auto &bomb: bombs) {
+		bombs_vector.push_back(bomb.second);
+	}
+
 	return {server_name, size_x, size_y, game_length, turn, players,
-	        player_positions, blocks, bombs, explosions, scores};
+	        player_positions, blocks, bombs_vector, explosions, scores};
 }

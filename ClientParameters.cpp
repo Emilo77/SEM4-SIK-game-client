@@ -67,7 +67,7 @@ static inline void check_address(const std::string &address) {
 static inline void check_ip(std::string ip) {
 	std::string address, port;
 	split_ip(ip, address, port);
-	check_address(address);
+//	check_address(address);
 	check_port_str(port);
 }
 

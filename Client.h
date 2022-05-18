@@ -110,11 +110,7 @@ private:
 	std::optional<ServerToGuiHandler> handler_to_gui;
 };
 
-int main(int argc, char *argv[]) {
-	ClientParameters parameters(argc, argv);
-	Client client(parameters);
-	client.run();
-}
+
 
 
 #endif //ZADANIE02_CLIENT_H

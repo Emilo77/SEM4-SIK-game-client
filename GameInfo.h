@@ -8,6 +8,59 @@
 #include "Messages.h"
 #include <iostream>
 
+class Field {
+public:
+	bool is_solid{false};
+
+	void make_block() {
+		is_solid = true;
+	}
+
+	void make_air() {
+		is_solid = false;
+	}
+
+};
+
+class Board {
+
+	std::vector<std::vector<Field>> fields;
+public:
+	void reset(uint16_t size_x, uint16_t size_y) {
+		fields.resize(size_x);
+		for (auto &row: fields) {
+			row.resize(size_y);
+		}
+
+		for (auto &column: fields) {
+			for (auto &field: column) {
+				field.make_air();
+			}
+		}
+	}
+
+	void place_block(Position position) {
+		fields[position.x][position.y].make_block();
+	}
+
+	void explode_block(Position position) {
+		fields[position.x][position.y].make_air();
+	}
+
+	std::vector<Position> return_blocks() {
+		std::vector<Position> blocks;
+		for (size_t column = 0; column < fields.size(); column++) {
+			for (size_t row = 0; row < fields[column].size(); row++) {
+				if (fields[column][row].is_solid) {
+					blocks.emplace_back(column, row);
+				}
+			}
+		}
+		return blocks;
+	}
+
+};
+
 class GameInfo {
 private:
 	enum GameState game_state{LobbyState};
@@ -21,14 +74,16 @@ private:
 	std::map<player_id_t, Player> players;
 
 	//GameplayState state
+	Board board;
 	uint16_t turn{0};
 	std::map<player_id_t, Position> player_positions;
-	std::vector<Position> blocks;
-	std::vector<Bomb> bombs;
-	std::vector<Position> explosions;
+	std::map<bomb_id_t, Bomb> bombs;
 	std::map<player_id_t, score_t> scores;
+	std::vector<Position> explosions;
 
 	void restart_info();
+
+	std::vector<Position> calculate_explosion(struct BombExploded &data);
 
 	void apply_event(Event &event);
 
