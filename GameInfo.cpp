@@ -54,11 +54,11 @@ void GameInfo::apply_GameEnded(struct GameEnded &message) {
 }
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
-	bombs.insert({data.bomb_id, Bomb(data.bomb_id, data.position)});
+	bombs.insert({data.bomb_id, Bomb(data.bomb_id, data.position, bomb_timer)});
 }
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {
-	std::vector<Position> new_explosions = calculate_explosion(data);
+	std::list<Position> new_explosions = calculate_explosion(data);
 	explosions = new_explosions;
 
 	for (auto robot_id: data.robots_destroyed) {
@@ -117,9 +117,15 @@ void GameInfo::restart_info() {
 	scores.clear();
 }
 
+void GameInfo::decrease_bomb_timers() {
+	for(auto &bombs_element : bombs) {
+		bombs_element.second.decrease_timer();
+	}
+}
 
-std::vector<Position> GameInfo::calculate_explosion(struct BombExploded &data) {
-	std::vector<Position> exploded;
+
+std::list<Position> GameInfo::calculate_explosion(struct BombExploded &data) {
+	std::list<Position> exploded;
 	Position bomb_pos = bombs.at(data.bomb_id).position;
 	exploded.push_back(bomb_pos);
 
@@ -137,8 +143,8 @@ Lobby GameInfo::create_lobby_msg() {
 }
 
 struct GamePlay GameInfo::create_gameplay_msg() {
-	std::vector<Position> blocks = board.return_blocks();
-	std::vector<Bomb> bombs_vector;
+	std::list<Position> blocks = board.return_blocks();
+	std::list<Bomb> bombs_vector;
 	for (auto &bomb: bombs) {
 		bombs_vector.push_back(bomb.second);
 	}

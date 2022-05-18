@@ -12,7 +12,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &v) {
 
 void exit_program(int status) {
 	if (status) {
-		std::cerr << "Consider using -h [--help] command" << std::endl;
+		std::cerr << "Consider using -h [--help] option" << std::endl;
 	}
 	exit(status);
 }
@@ -85,18 +85,21 @@ void ClientParameters::check_parameters() {
 		desc.add_options()
 				("help,h", "produce help message")
 				("gui-address,d",
-				 po::value<std::string>(&display_ip)->required()->notifier(
-						 &check_ip),
+				 po::value<std::string>(&display_ip)->value_name
+								 ("<(hostname):(port) or (IPv4):(port) or (IPv6):(port)>")
+						 ->required()->notifier(&check_ip),
 				 "set the gui address")
 				("player-name,n",
-				 po::value<std::string>(&player_name)->required(),
+				 po::value<std::string>(&player_name)->value_name("String")
+						 ->required(),
 				 "set the player name")
-				("port,p", po::value<int>(&possible_port)->required()->notifier(
-						 &check_port),
+				("port,p", po::value<int>(&possible_port)->value_name("u16")
+						 ->required()->notifier(&check_port),
 				 "set the port number")
 				("server-address,s",
-				 po::value<std::string>(&server_ip)->required()->notifier(
-						 &check_ip),
+				 po::value<std::string>(&server_ip)->value_name
+								 ("<(hostname):(port) or (IPv4):(port) or (IPv6):(port)>")
+						 ->required()->notifier(&check_ip),
 				 "set the server address");
 
 		po::variables_map vm;

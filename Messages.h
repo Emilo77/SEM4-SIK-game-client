@@ -90,18 +90,18 @@ typedef struct GamePlay {
 	uint16_t turn;
 	std::map<player_id_t, Player> players;
 	std::map<player_id_t, Position> player_positions;
-	std::vector<Position> blocks;
-	std::vector<Bomb> bombs;
-	std::vector<Position> explosions;
+	std::list<Position> blocks;
+	std::list<Bomb> bombs;
+	std::list<Position> explosions;
 	std::map<player_id_t, score_t> scores;
 
 	GamePlay(std::string &serverName, uint16_t sizeX, uint16_t sizeY,
 	         uint16_t gameLength, uint16_t turn,
 	         std::map<player_id_t, Player> &players,
 	         std::map<player_id_t, Position> &playerPositions,
-	         std::vector<Position> &blocks,
-	         std::vector<Bomb> &bombs,
-	         std::vector<Position> &explosions,
+	         std::list<Position> &blocks,
+	         std::list<Bomb> &bombs,
+	         std::list<Position> &explosions,
 	         std::map<player_id_t, score_t> &scores)
 			: server_name(serverName),
 			  size_x(sizeX),

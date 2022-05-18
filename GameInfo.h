@@ -47,8 +47,8 @@ public:
 		fields[position.x][position.y].make_air();
 	}
 
-	std::vector<Position> return_blocks() {
-		std::vector<Position> blocks;
+	std::list<Position> return_blocks() {
+		std::list<Position> blocks;
 		for (size_t column = 0; column < fields.size(); column++) {
 			for (size_t row = 0; row < fields[column].size(); row++) {
 				if (fields[column][row].is_solid) {
@@ -79,11 +79,13 @@ private:
 	std::map<player_id_t, Position> player_positions;
 	std::map<bomb_id_t, Bomb> bombs;
 	std::map<player_id_t, score_t> scores;
-	std::vector<Position> explosions;
+	std::list<Position> explosions;
 
 	void restart_info();
 
-	std::vector<Position> calculate_explosion(struct BombExploded &data);
+	void decrease_bomb_timers();
+
+	std::list<Position> calculate_explosion(struct BombExploded &data);
 
 	void apply_event(Event &event);
 

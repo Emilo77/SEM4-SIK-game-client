@@ -1,39 +1,45 @@
 #include "Buffer.h"
 
-template<typename T>
-T Buffer::convert_to_send(T number) {
-	switch (sizeof(T)) {
-		case 1:
-			return number;
-		case 2:
-			return htobe16(number);
-		case 4:
-			return htobe32(number);
-		default:
-			return htobe64(number);
-	}
-}
+uint8_t Buffer::convert_to_send(uint8_t number) { return number; }
 
-template<typename T>
-T Buffer::convert_to_receive(T number) {
-	switch (sizeof(T)) {
-		case 1:
-			return number;
-		case 2:
-			return be16toh(number);
-		case 4:
-			return be32toh(number);
-		default:
-			return be64toh(number);
-	}
-}
+uint16_t Buffer::convert_to_send(uint16_t number) { return htobe16(number); }
 
-template<typename T>
-void Buffer::insert(T number) {
-	size_t size = sizeof(T);
+uint32_t Buffer::convert_to_send(uint32_t number) { return htobe32(number); }
+
+uint64_t Buffer::convert_to_send(uint64_t number) { return htobe64(number); }
+
+
+uint8_t Buffer::convert_to_receive(uint8_t number) { return number; }
+
+uint16_t Buffer::convert_to_receive(uint16_t number) { return be16toh(number); }
+
+uint32_t Buffer::convert_to_receive(uint32_t number) { return be32toh(number); }
+
+uint64_t Buffer::convert_to_receive(uint64_t number) { return be64toh(number); }
+
+
+void Buffer::insert(uint8_t number) {
 	number = convert_to_send(number);
-	memcpy(buffer + send_index, &number, size);
-	send_index += size;
+	memcpy(buffer + send_index, &number, sizeof(number));
+	send_index += sizeof(number);
+}
+
+void Buffer::insert(uint16_t number) {
+	number = convert_to_send(number);
+	memcpy(buffer + send_index, &number, sizeof(number));
+	send_index += sizeof(number);
+}
+
+void Buffer::insert(uint32_t number) {
+	number = convert_to_send(number);
+	memcpy(buffer + send_index, &number, sizeof(number));
+	send_index += sizeof(number);
+}
+
+void Buffer::insert(uint64_t number) {
+	number = convert_to_send(number);
+	memcpy(buffer + send_index, &number, sizeof(number));
+	send_index += sizeof(number);
 }
 
 void Buffer::insert_raw(const string &str) {
@@ -42,11 +48,30 @@ void Buffer::insert_raw(const string &str) {
 	send_index += size;
 }
 
-void Buffer::insert(Direction direction) { insert((uint8_t) direction); }
 
-template<typename T>
-void Buffer::receive(T &number) {
-	size_t size = sizeof(T);
+void Buffer::receive(uint8_t &number) {
+	size_t size = sizeof(number);
+	memcpy(&number, buffer + read_index, size);
+	read_index += size;
+	number = convert_to_receive(number);
+}
+
+void Buffer::receive(uint16_t &number) {
+	size_t size = sizeof(number);
+	memcpy(&number, buffer + read_index, size);
+	read_index += size;
+	number = convert_to_receive(number);
+}
+
+void Buffer::receive(uint32_t &number) {
+	size_t size = sizeof(number);
+	memcpy(&number, buffer + read_index, size);
+	read_index += size;
+	number = convert_to_receive(number);
+}
+
+void Buffer::receive(uint64_t &number) {
+	size_t size = sizeof(number);
 	memcpy(&number, buffer + read_index, size);
 	read_index += size;
 	number = convert_to_receive(number);
@@ -76,26 +101,46 @@ void Buffer::insert(Bomb &bomb) {
 	insert(bomb.timer);
 }
 
-template<typename T>
-//todo ograniczenie na T, że musi być primitive
-void Buffer::insert_list(std::vector<T> &list) {
-	insert((uint32_t) list.size());
-	for (T &list_element: list) {
+void Buffer::insert_list_positions(std::list<Position> &positions) {
+	insert((uint32_t) positions.size());
+	for (Position &list_element: positions) {
 		insert(list_element);
 	}
 }
 
-template<typename T, typename U>
-void Buffer::insert_map(std::map<T, U> &map) {
-	insert((uint32_t) map.size());
-	for (auto &map_element: map) {
+void Buffer::insert_list_bombs(std::list<Bomb> &bombs) {
+	insert((uint32_t) bombs.size());
+	for (Bomb &list_element: bombs) {
+		insert(list_element);
+	}
+}
+
+void Buffer::insert_map_players(std::map<player_id_t, Player> &players) {
+	insert((uint32_t) players.size());
+	for (auto &map_element: players) {
+		insert(map_element.first);
+		insert(map_element.second);
+	}
+}
+
+void Buffer::insert_map_scores(std::map<player_id_t, score_t> &scores) {
+	insert((uint32_t) scores.size());
+	for (auto &map_element: scores) {
+		insert(map_element.first);
+		insert(map_element.second);
+	}
+}
+
+void Buffer::insert_map_positions(std::map<player_id_t, Position> &positions) {
+	insert((uint32_t) positions.size());
+	for (auto &map_element: positions) {
 		insert(map_element.first);
 		insert(map_element.second);
 	}
 }
 
 void Buffer::receive(string &str) {
-	uint8_t string_size;
+	uint8_t string_size = 0;
 	receive(string_size);
 	receive_raw(str, string_size);
 }
@@ -110,11 +155,6 @@ void Buffer::receive(Player &player) {
 	receive(player.address);
 }
 
-void Buffer::receive(Bomb &bomb) {
-	receive(bomb.position);
-	receive(bomb.timer);
-}
-
 void Buffer::receive_event_content(struct BombPlaced &data) {
 	receive(data.bomb_id);
 	receive(data.position);
@@ -122,8 +162,8 @@ void Buffer::receive_event_content(struct BombPlaced &data) {
 
 void Buffer::receive_event_content(struct BombExploded &data) {
 	receive(data.bomb_id);
-	receive_list(data.robots_destroyed);
-	receive_list(data.blocks_destroyed);
+	receive_list_player_ids(data.robots_destroyed);
+	receive_list_positions(data.blocks_destroyed);
 }
 
 void Buffer::receive_event_content(struct PlayerMoved &data) {
@@ -153,7 +193,7 @@ void Buffer::receive_event(EventType type, Event &event) {
 	}
 }
 
-void Buffer::receive_event_list(std::vector<Event> &vector) {
+void Buffer::receive_list_events(std::vector<Event> &vector) {
 	size_t vector_size;
 	receive(vector_size);
 	for (uint32_t i = 0; i < vector_size; ++i) {
@@ -169,50 +209,70 @@ void Buffer::receive_event_list(std::vector<Event> &vector) {
 	}
 }
 
-template<typename T>
-void Buffer::receive_list(std::vector<T> &vector) {
+void Buffer::receive_list_player_ids(std::vector<player_id_t> &ids) {
 	uint32_t vector_size;
 	receive(vector_size);
 	for (uint32_t i = 0; i < vector_size; ++i) {
-		T list_element;
+		player_id_t list_element;
 		receive(list_element);
-		vector.push_back(list_element);
+		ids.push_back(list_element);
 	}
 }
 
-template<typename T, typename U>
-void Buffer::receive_map(std::map<T, U> &map) {
+void Buffer::receive_list_positions(std::vector<Position> &positions) {
+	uint32_t vector_size;
+	receive(vector_size);
+	for (uint32_t i = 0; i < vector_size; ++i) {
+		Position list_element;
+		receive(list_element);
+		positions.push_back(list_element);
+	}
+}
+
+void Buffer::receive_map_players(std::map<player_id_t, Player> &players) {
 	uint32_t map_size;
 	receive(map_size);
 	for (uint32_t i = 0; i < map_size; ++i) {
-		T map_key;
-		U map_value;
+		player_id_t map_key;
+		Player map_value;
 		receive(map_key);
 		receive(map_value);
-		map.insert({map_key, map_value});
+		players.insert({map_key, map_value});
 	}
 }
 
-void Buffer::send_join(string &name) {
-	reset_send_index();
-	insert((uint8_t) ClientMessageToServerType::JoinServer);
-	insert(name);
+void Buffer::receive_map_scores(std::map<player_id_t, score_t> &scores) {
+	uint32_t map_size;
+	receive(map_size);
+	for (uint32_t i = 0; i < map_size; ++i) {
+		player_id_t map_key;
+		score_t map_value;
+		receive(map_key);
+		receive(map_value);
+		scores.insert({map_key, map_value});
+	}
 }
 
-void Buffer::send_place_bomb() {
+void Buffer::insert_join(string &string) {
+	reset_send_index();
+	insert((uint8_t) ClientMessageToServerType::JoinServer);
+	insert(string);
+}
+
+void Buffer::insert_place_bomb() {
 	reset_send_index();
 	insert((uint8_t) ClientMessageToServerType::PlaceBombServer);
 }
 
-void Buffer::send_place_block() {
+void Buffer::insert_place_block() {
 	reset_send_index();
 	insert((uint8_t) ClientMessageToServerType::PlaceBlockServer);
 }
 
-void Buffer::send_move(Direction direction) {
+void Buffer::insert_move(Direction direction) {
 	reset_send_index();
 	insert((uint8_t) ClientMessageToServerType::MoveServer);
-	insert(direction);
+	insert((uint8_t) direction);
 }
 
 size_t Buffer::receive_hello(struct Hello &message) {
@@ -233,18 +293,18 @@ size_t Buffer::receive_accepted_player(struct AcceptedPlayer &message) {
 }
 
 size_t Buffer::receive_game_started(struct GameStarted &message) {
-	receive_map(message.players);
+	receive_map_players(message.players);
 	return get_read_size();
 }
 
 size_t Buffer::receive_turn(struct Turn &message) {
 	receive(message.turn);
-	receive_event_list(message.events);
+	receive_list_events(message.events);
 	return get_read_size();
 }
 
 size_t Buffer::receive_game_ended(struct GameEnded &message) {
-	receive_map(message.scores);
+	receive_map_scores(message.scores);
 	return get_read_size();
 }
 
@@ -259,7 +319,7 @@ void Buffer::send_lobby(Lobby &message) {
 	insert(message.game_length);
 	insert(message.explosion_radius);
 	insert(message.bomb_timer);
-	insert_map(message.players);
+	insert_map_players(message.players);
 }
 
 void Buffer::send_game(GamePlay &message) {
@@ -271,10 +331,12 @@ void Buffer::send_game(GamePlay &message) {
 	insert(message.size_y);
 	insert(message.game_length);
 	insert(message.turn);
-	insert_map(message.players);
-	insert_map(message.player_positions);
-	insert_list(message.blocks);
-	insert_list(message.bombs);
+	insert_map_players(message.players);
+	insert_map_positions(message.player_positions);
+	insert_list_positions(message.blocks);
+	insert_list_bombs(message.bombs);
+	insert_list_positions(message.explosions);
+	insert_map_scores(message.scores);
 }
 
 
@@ -282,16 +344,16 @@ size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 	reset_send_index();
 	switch (message.type) {
 		case ClientMessageToServerType::JoinServer:
-			send_join(std::get<string>(message.data));
+			insert_join(std::get<string>(message.data));
 			break;
 		case ClientMessageToServerType::PlaceBombServer:
-			send_place_bomb();
+			insert_place_bomb();
 			break;
 		case ClientMessageToServerType::PlaceBlockServer:
-			send_place_block();
+			insert_place_block();
 			break;
 		case ClientMessageToServerType::MoveServer:
-			send_move(std::get<Direction>(message.data));
+			insert_move(std::get<Direction>(message.data));
 			break;
 	}
 	return get_send_size();
@@ -301,7 +363,7 @@ std::optional<ServerMessageToClient>
 Buffer::receive_msg_from_server(size_t length) {
 	auto serverMessage = std::optional<ServerMessageToClient>();
 	reset_read_index();
-	size_t received = 0;
+	size_t received;
 	uint8_t message;
 	receive(message);
 	if (invalid_server_message_type(message)) {

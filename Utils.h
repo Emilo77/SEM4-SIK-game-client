@@ -68,9 +68,10 @@ public:
 	Position position;
 	uint16_t timer;
 
-	Bomb(bomb_id_t bomb_id, Position position)
+	Bomb(bomb_id_t bomb_id, Position position, uint16_t timer)
 			: bomb_id(bomb_id),
-			  position(position) {}
+			  position(position),
+			  timer(timer){}
 
 	void decrease_timer() { timer--; }
 
