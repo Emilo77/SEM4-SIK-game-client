@@ -9,57 +9,105 @@
 
 #include <boost/bind/bind.hpp>
 #include <boost/asio.hpp>
+#include <utility>
 
 using boost::asio::ip::udp;
 using boost::asio::ip::tcp;
-boost::asio::io_context io_context;
+
+
+class GuiToServerHandler {
+public:
+	GuiToServerHandler(GameInfo &game_info, ClientParameters &parameters,
+	                   boost::asio::io_context &io_context,
+	                   tcp::resolver::results_type server_endpoint,
+	                   udp::resolver::results_type gui_endpoint)
+			: game_info(game_info),
+			  parameters(parameters),
+			  io_context(io_context),
+			  socket(io_context),
+			  server_endpoint(std::move(server_endpoint)),
+			  gui_endpoint(std::move(gui_endpoint)) {}
+
+	void connect_with_server();
+
+	void handle_connect(const boost::system::error_code &error);
+
+	void receive_from_dislay();
+
+	void handle_message_from_display(const boost::system::error_code &error,
+	                                 size_t length);
+
+	ClientMessageToServer
+	prepare_msg_to_server(DisplayMessageToClient &message);
+
+	void send_to_server();
+
+private:
+	Buffer buffer;
+	GameInfo &game_info;
+	ClientParameters parameters;
+	boost::asio::io_context &io_context;
+	tcp::socket socket;
+	tcp::resolver::results_type server_endpoint;
+	udp::resolver::results_type gui_endpoint;
+};
+
+class ServerToGuiHandler {
+
+public:
+	ServerToGuiHandler(GameInfo &game_info, ClientParameters &parameters,
+	                   boost::asio::io_context &io_context,
+	                   tcp::resolver::results_type server_endpoint,
+	                   udp::resolver::results_type gui_endpoint)
+			: game_info(game_info),
+			  parameters(parameters),
+			  io_context(io_context),
+			  socket(io_context),
+			  server_endpoint(std::move(server_endpoint)),
+			  gui_endpoint(std::move(gui_endpoint)) {}
+
+private:
+
+	void connect_with_server();
+
+	void receive_from_server();
+
+	void handle_message_from_server(const boost::system::error_code &error,
+	                                size_t length);
+
+	ClientMessageToDisplay prepare_msg_to_display();
+
+	void send_to_display();
+
+
+	Buffer buffer;
+	GameInfo &game_info;
+	ClientParameters parameters;
+	boost::asio::io_context &io_context;
+	tcp::socket socket;
+	tcp::resolver::results_type server_endpoint;
+	udp::resolver::results_type gui_endpoint;
+};
 
 class Client {
 
 public:
-	explicit Client(ClientParameters &parameters) : parameters(parameters),
-	display_socket(io_context, udp::endpoint(udp::v6(), parameters.port)), {}
+	explicit Client(ClientParameters &parameters) : parameters(parameters) {
+		initialize();
+	}
 
 	void run();
 
 private:
-private:
-	ClientParameters parameters;
-	Buffer buffer;
-	GameInfo game_info;
-	bool finish{false};
-	udp::socket display_socket;
-	udp::endpoint display_endpoint;
-//	tcp::socket server_socket;
-	tcp::endpoint server_endpoint;
-
-
-	void connect_display();
-
-	void connect_server();
-
-	void send_to_display();
-
-	void send_to_server();
-
-	void receive_from_dislay();
-
-	void receive_from_server();
-
-	ClientMessageToDisplay prepare_msg_to_display();
-
-	ClientMessageToServer prepare_msg_to_server(DisplayMessageToClient &message);
-
-
-	void handle_message_from_server(const boost::system::error_code& error,
-	                                size_t length);
-
-	void handle_message_from_display(const boost::system::error_code& error,
-	                                 size_t length);
-
 	void initialize();
 
 
+	ClientParameters parameters;
+	GameInfo game_info;
+	bool finish{false};
+	boost::asio::io_context io_context;
+	std::optional<GuiToServerHandler> handler_to_server;
+	std::optional<ServerToGuiHandler> handler_to_gui;
 };
 
 int main(int argc, char *argv[]) {

@@ -14,6 +14,12 @@ ENDIF (Boost_FOUND)
 
 SET(USED_LIBS ${Boost_SYSTEM_LIBRARY} ${Boost_PROGRAM_OPTIONS_LIBRARY})
 
-add_executable(robots-client Buffer.cpp ClientParameters.cpp Client.cpp GameInfo.cpp)
+add_executable(robots-client
+        Buffer.cpp
+        ClientParameters.cpp
+        Client.cpp
+        GameInfo.cpp
+        GuiToServerHandler.cpp
+        ServerToGuiHandler.cpp)
 
 TARGET_LINK_LIBRARIES(robots-client ${USED_LIBS})

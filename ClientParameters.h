@@ -33,8 +33,8 @@ public:
 	std::string server_ip;
 	std::string display_address; //może potem zamienić na inny typ
 	std::string server_address;
-	uint16_t display_port;
-	uint16_t server_port;
+	std::string display_port;
+	std::string server_port;
 	std::string player_name;
 	uint16_t port{0};
 
