@@ -47,6 +47,7 @@ void GameInfo::apply_Turn(struct Turn &message) {
 	for (auto &event: message.events) {
 		apply_event(event);
 	}
+	decrease_bomb_timers(); //może nie w tym miejscu
 }
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
@@ -118,7 +119,7 @@ void GameInfo::restart_info() {
 }
 
 void GameInfo::decrease_bomb_timers() {
-	for(auto &bombs_element : bombs) {
+	for (auto &bombs_element: bombs) {
 		bombs_element.second.decrease_timer();
 	}
 }

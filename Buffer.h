@@ -21,16 +21,12 @@ private:
 
 	static uint32_t convert_to_send(uint32_t number);
 
-	static uint64_t convert_to_send(uint64_t number);
-
 	//CONVERTING NUMBERS TO SEND
 	static uint8_t convert_to_receive(uint8_t number);
 
 	static uint16_t convert_to_receive(uint16_t number);
 
 	static uint32_t convert_to_receive(uint32_t number);
-
-	static uint64_t convert_to_receive(uint64_t number);
 
 	//RAW INSERTS
 	void insert_raw(const std::string &str);
@@ -44,8 +40,6 @@ private:
 	void insert(uint16_t number);
 
 	void insert(uint32_t number);
-
-	void insert(uint64_t number);
 
 	//INSERTS WITH TASK CONVENTION
 	void insert(const std::string &str);
@@ -74,8 +68,6 @@ private:
 	void receive(uint16_t &number);
 
 	void receive(uint32_t &number);
-
-	void receive(uint64_t &number);
 
 	// RECEIVES WITH TASK CONVENTION
 	void receive(std::string &str);
@@ -108,7 +100,7 @@ private:
 	void receive_map_scores(std::map<player_id_t, score_t> &scores);
 
 	// SENDING TO SERVER
-	void insert_join(std::string &string);
+	void insert_join(std::string &name);
 
 	void insert_place_bomb();
 
