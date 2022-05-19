@@ -72,15 +72,18 @@ static inline void check_ip(std::string ip) {
 }
 
 //porównywanie adresów ip
-static inline void compare_ip() {
-	//todo throw jesli błąd
+void ClientParameters::compare_ip() const {
+	if (display_ip == server_ip) {
+		throw po::validation_error(po::validation_error::invalid_option_value,
+		                           "same display ip and server ip");
+	}
 }
 
 //może zmienić parsowanie portu jako string
 void ClientParameters::check_parameters() {
 	int possible_port = -1;
 	const po::positional_options_description p; // empty positional options
-	po::options_description desc("Program Usage", 1024, 512);
+	po::options_description desc(1024, 512);
 	try {
 		desc.add_options()
 				("help,h", "produce help message")
@@ -109,7 +112,7 @@ void ClientParameters::check_parameters() {
 				run(), vm);
 
 		if (vm.count("help")) {
-			std::cout << desc << "\n";
+			std::cout << "Program Usage: ./" << argv[0] << "\n" << desc << "\n";
 			exit_program(0);
 		}
 
@@ -127,5 +130,3 @@ void ClientParameters::check_parameters() {
 	}
 	port = (uint16_t) possible_port;
 }
-
-//todo: czy --gui-address może być skracane do postaci --gui?

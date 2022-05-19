@@ -28,10 +28,17 @@ GuiToServerHandler::handle_connect(const boost::system::error_code &error) {
 void GuiToServerHandler::handle_message_from_display(
 		const boost::system::error_code &error,
 		size_t length) {
-	auto message = buffer.receive_msg_from_display(length);
-	if (message.has_value()) {
-		ClientMessageToServer reply = prepare_msg_to_server(message.value());
-		buffer.insert_msg_to_server(reply);
+	if (length == 0) {
+		// spróbuj połączyć się ponownie (?)
+		// albo zakończ działanie programu (?)
+	} else if(!error) {
+		auto message = buffer.receive_msg_from_display(length);
+		if (message.has_value()) {
+			ClientMessageToServer reply = prepare_msg_to_server(message.value());
+			buffer.insert_msg_to_server(reply);
+		} else {
+			// rozłącz się z serwerem
+		}
 	}
 }
 

@@ -15,6 +15,8 @@ private:
 		//todo
 	};
 
+	void compare_ip() const;
+
 	void check_parameters();
 
 	void print_parameters() const {
@@ -29,9 +31,9 @@ private:
 	}
 
 public:
-	std::string display_ip; //może potem zamienić na inny typ
+	std::string display_ip;
 	std::string server_ip;
-	std::string display_address; //może potem zamienić na inny typ
+	std::string display_address;
 	std::string server_address;
 	std::string display_port;
 	std::string server_port;

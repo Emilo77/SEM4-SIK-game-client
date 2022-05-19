@@ -252,7 +252,7 @@ void Buffer::insert_move(Direction direction) {
 	insert((uint8_t) direction);
 }
 
-size_t Buffer::receive_hello(struct Hello &message) {
+void Buffer::receive_hello(struct Hello &message) {
 	receive(message.server_name);
 	receive(message.players_count);
 	receive(message.size_x);
@@ -260,29 +260,29 @@ size_t Buffer::receive_hello(struct Hello &message) {
 	receive(message.game_length);
 	receive(message.explosion_radius);
 	receive(message.bomb_timer);
-	return get_read_size();
+
 }
 
-size_t Buffer::receive_accepted_player(struct AcceptedPlayer &message) {
+void Buffer::receive_accepted_player(struct AcceptedPlayer &message) {
 	receive(message.player_id);
 	receive(message.player);
-	return get_read_size();
+
 }
 
-size_t Buffer::receive_game_started(struct GameStarted &message) {
+void Buffer::receive_game_started(struct GameStarted &message) {
 	receive_map_players(message.players);
-	return get_read_size();
+
 }
 
-size_t Buffer::receive_turn(struct Turn &message) {
+void Buffer::receive_turn(struct Turn &message) {
 	receive(message.turn);
 	receive_list_events(message.events);
-	return get_read_size();
+
 }
 
-size_t Buffer::receive_game_ended(struct GameEnded &message) {
+void Buffer::receive_game_ended(struct GameEnded &message) {
 	receive_map_scores(message.scores);
-	return get_read_size();
+
 }
 
 void Buffer::send_lobby(Lobby &message) {
@@ -333,10 +333,9 @@ size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 }
 
 std::optional<ServerMessageToClient>
-Buffer::receive_msg_from_server(size_t length) {
+Buffer::receive_msg_from_server(size_t expected_size) {
 	auto serverMessage = std::optional<ServerMessageToClient>();
 	reset_read_index();
-	size_t received;
 	uint8_t message;
 	receive(message);
 	if (invalid_server_message_type(message)) {
@@ -344,28 +343,28 @@ Buffer::receive_msg_from_server(size_t length) {
 	}
 	switch ((ServerMessageToClientType) message) {
 		case Hello:
-			received = receive_hello(
+			receive_hello(
 					std::get<struct Hello>(serverMessage->data));
 			break;
 		case AcceptedPlayer:
-			received = receive_accepted_player(
+			receive_accepted_player(
 					std::get<struct AcceptedPlayer>(serverMessage->data));
 			break;
 		case GameStarted:
-			received = receive_game_started(
+			receive_game_started(
 					std::get<struct GameStarted>(serverMessage->data));
 			break;
 		case Turn:
-			received = receive_turn(
+			receive_turn(
 					std::get<struct Turn>(serverMessage->data));
 			break;
 		case GameEnded:
-			received = receive_game_ended(
+			receive_game_ended(
 					std::get<struct GameEnded>(serverMessage->data));
 			break;
 	}
-	if (received != length) {
-		return {};
+	if (get_read_size() != expected_size) {
+		return {}; //może niepotrzebne, wtedy zakomentować
 	}
 	serverMessage->type = (ServerMessageToClientType) message;
 	return serverMessage;
@@ -385,7 +384,7 @@ size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {
 }
 
 std::optional<DisplayMessageToClient>
-Buffer::receive_msg_from_display(size_t length) {
+Buffer::receive_msg_from_display(size_t expected_size) {
 	auto message = std::optional<DisplayMessageToClient>();
 	reset_read_index();
 	uint8_t message_type;
@@ -402,5 +401,9 @@ Buffer::receive_msg_from_display(size_t length) {
 		message->direction = (Direction) direction;
 	}
 	message->type = (DisplayMessageToClientType) message_type;
+
+	if (get_read_size() != expected_size) {
+		return {};
+	}
 	return message;
 }

@@ -48,6 +48,7 @@ void GameInfo::apply_Turn(struct Turn &message) {
 		apply_event(event);
 	}
 	decrease_bomb_timers(); //może nie w tym miejscu
+	increase_score_and_revive_players();
 }
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
@@ -63,10 +64,10 @@ void GameInfo::apply_BombExploded(struct BombExploded &data) {
 	explosions = new_explosions;
 
 	for (auto robot_id: data.robots_destroyed) {
-		if (scores.find(robot_id) == scores.end()) {
+		if (players.find(robot_id) == players.end()) {
 			std::cerr << "Player not found!" << std::endl;
 		} else {
-			scores.at(robot_id)++;
+			players.at(robot_id).explode();
 		}
 	}
 
@@ -121,6 +122,15 @@ void GameInfo::restart_info() {
 void GameInfo::decrease_bomb_timers() {
 	for (auto &bombs_element: bombs) {
 		bombs_element.second.decrease_timer();
+	}
+}
+
+void GameInfo::increase_score_and_revive_players() {
+	for (auto &player_pair : players) {
+		if (player_pair.second.is_dead()) {
+			scores.at(player_pair.first)++;
+			player_pair.second.revive();
+		}
 	}
 }
 

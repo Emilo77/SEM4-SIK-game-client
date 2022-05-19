@@ -109,15 +109,15 @@ private:
 	void insert_move(Direction direction);
 
 	// RECEIVING FROM SERVER
-	size_t receive_hello(struct Hello &message);
+	void receive_hello(struct Hello &message);
 
-	size_t receive_accepted_player(struct AcceptedPlayer &message);
+	void receive_accepted_player(struct AcceptedPlayer &message);
 
-	size_t receive_game_started(struct GameStarted &message);
+	void receive_game_started(struct GameStarted &message);
 
-	size_t receive_turn(struct Turn &message);
+	void receive_turn(struct Turn &message);
 
-	size_t receive_game_ended(struct GameEnded &message);
+	void receive_game_ended(struct GameEnded &message);
 
 	// SENDING TO DISPLAY
 	void send_lobby(Lobby &message);
@@ -132,12 +132,12 @@ public:
 	size_t insert_msg_to_server(ClientMessageToServer &message);
 
 	std::optional<ServerMessageToClient>
-	receive_msg_from_server(size_t length);
+	receive_msg_from_server(size_t expected_size);
 
 	size_t insert_msg_to_display(ClientMessageToDisplay &drawMessage);
 
 	std::optional<DisplayMessageToClient>
-	receive_msg_from_display(size_t length);
+	receive_msg_from_display(size_t expected_size);
 
 	[[nodiscard]] size_t get_send_size() const { return send_index; }
 

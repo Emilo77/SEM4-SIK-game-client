@@ -71,16 +71,24 @@ public:
 	Bomb(bomb_id_t bomb_id, Position position, uint16_t timer)
 			: bomb_id(bomb_id),
 			  position(position),
-			  timer(timer){}
+			  timer(timer) {}
 
 	void decrease_timer() { timer--; }
 
 	bool operator<(const Bomb &rhs) const { return bomb_id < rhs.bomb_id; }
 };
 
-struct Player {
+class Player {
+	bool dead{false};
+public:
 	std::string name;
 	std::string address;
+
+	bool is_dead() { return dead; }
+
+	void explode() { dead = true; }
+
+	void revive() { dead = false; }
 };
 
 static std::pair<int, int> direction_to_pair(Direction &direction) {
@@ -94,7 +102,6 @@ static std::pair<int, int> direction_to_pair(Direction &direction) {
 		case Left:
 			return {-1, 0};
 	}
-	return {69, 69};
 }
 
 enum EventType {

@@ -87,6 +87,8 @@ private:
 
 	std::list<Position> calculate_explosion(struct BombExploded &data);
 
+	void increase_score_and_revive_players();
+
 	void apply_event(Event &event);
 
 	void apply_Hello(struct Hello &message);
