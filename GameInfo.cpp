@@ -21,7 +21,7 @@ void GameInfo::apply_changes_from_server(ServerMessageToClient &msg) {
 }
 
 void GameInfo::apply_Hello(struct Hello &message) {
-	restart_info();
+	hard_restart_info();
 	server_name = message.server_name;
 	players_count = message.players_count;
 	size_x = message.size_x;
@@ -36,10 +36,10 @@ void GameInfo::apply_AcceptedPlayer(struct AcceptedPlayer &message) {
 }
 
 void GameInfo::apply_GameStarted(struct GameStarted &message) {
-	board.reset(size_x, size_y);
+	restart_game_status(); // może będzie można usunąć
 	game_state = GameState::GameplayState;
-	players.clear();
 	players = message.players;
+	initialize_maps();
 }
 
 void GameInfo::apply_Turn(struct Turn &message) {
@@ -53,6 +53,8 @@ void GameInfo::apply_Turn(struct Turn &message) {
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
 	scores = message.scores;
+	game_state = GameState::LobbyState;
+	restart_game_status();
 }
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
@@ -108,8 +110,16 @@ void GameInfo::apply_event(Event &event) {
 	}
 }
 
+void GameInfo::restart_game_status() {
+	board.reset(size_x, size_y);
+	players.clear();
+	player_positions.clear();
+	bombs.clear();
+	scores.clear();
+}
 
-void GameInfo::restart_info() {
+
+void GameInfo::hard_restart_info() {
 	board.reset(size_x, size_y);
 	game_state = GameState::LobbyState;
 	server_name.clear();
@@ -118,6 +128,13 @@ void GameInfo::restart_info() {
 	bombs.clear();
 	scores.clear();
 }
+
+void GameInfo::initialize_maps() {
+	for (auto &new_player_pair : players) {
+		scores.insert({new_player_pair.first, 0});
+		player_positions.insert({new_player_pair.first, Position()});
+	}
+};
 
 void GameInfo::decrease_bomb_timers() {
 	for (auto &bombs_element: bombs) {
@@ -139,6 +156,9 @@ std::list<Position> GameInfo::calculate_explosion(struct BombExploded &data) {
 	std::list<Position> exploded;
 	Position bomb_pos = bombs.at(data.bomb_id).position;
 	exploded.push_back(bomb_pos);
+	if (board.field_is_block(bomb_pos)) {
+		return exploded;
+	}
 
 //	for(int i = 1; i <= explosion_radius; i++) {
 //

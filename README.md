@@ -3,6 +3,8 @@
 Pytania proszę wysyłać na adres agluszak@mimuw.edu.pl.
 
 Historia zmian:
+- **18.05.2022** - nowe pytania
+- **16.05.2022** - obsługa IPv6 w GUI, doprecyzowanie jak projekt ma się budować
 - **13.05.2022** - zmiana display na gui, dodanie pytań
 - **10.05.2022** - doprecyzowanie jak identyfikowani są klienci
 - **09.05.2022** - poprawki w GUI, nowe pytania w FAQ
@@ -62,7 +64,7 @@ W każdej turze robot może:
 
 Gra toczy się cyklicznie - po uzbieraniu się odpowiedniej liczby graczy
 rozpoczyna się nowa rozgrywka na tym samym serwerze.
-Stan gry przed rozpoczęciem rozgrywki będziemy nazywać `LobbyState`.
+Stan gry przed rozpoczęciem rozgrywki będziemy nazywać `Lobby`.
 
 ### 1.2. Architektura rozwiązania
 
@@ -144,10 +146,10 @@ Należy wyłączyć algorytm Nagle'a (tzn. ustawić flagę TCP_NODELAY).
 
 ```
 enum ClientMessage {
-    [0] JoinServer { name: String },
-    [1] PlaceBombServer,
-    [2] PlaceBlockServer,
-    [3] MoveServer { direction: Direction },
+    [0] Join { name: String },
+    [1] PlaceBomb,
+    [2] PlaceBlock,
+    [3] Move { direction: Direction },
 }
 ```
 
@@ -162,7 +164,7 @@ enum Direction {
 }
 ```
 
-Wiadomość od klienta `JoinServer(“Żółć!”)` zostanie zserializowana jako ciąg bajtów
+Wiadomość od klienta `Join(“Żółć!”)` zostanie zserializowana jako ciąg bajtów
 `[0, 9, 197, 187, 195, 179, 197, 130, 196, 135, 33]`, gdzie:
 
 ```
@@ -175,17 +177,17 @@ Wiadomość od klienta `JoinServer(“Żółć!”)` zostanie zserializowana jak
 33 - '!'
 ```
 
-Natomiast wiadomość `JoinServer(“👩🏼‍👩🏼‍👧🏼‍👦🏼🇵🇱”)` zostanie zserializowana jako ciąg bajtów
+Natomiast wiadomość `Join(“👩🏼‍👩🏼‍👧🏼‍👦🏼🇵🇱”)` zostanie zserializowana jako ciąg bajtów
 `[0, 49, 240, 159, 145, 169, 240, 159, 143, 188, 226, 128, 141, 240, 159, 145, 169, 240, 159, 143, 188, 226, 128, 141, 240, 159, 145, 167, 240, 159, 143, 188, 226, 128, 141, 240, 159, 145, 166, 240, 159, 143, 188, 240, 159, 135, 181, 240, 159, 135, 177]`.
 
-Wiadomość `MoveServer(Down)` zserializowana zostanie jako ciąg bajtów `[3, 2]`.
+Wiadomość `Move(Down)` zserializowana zostanie jako ciąg bajtów `[3, 2]`.
 
 
 
 Klient po podłączeniu się do serwera zaczyna obserwować rozgrywkę, jeżeli ta jest w toku.
-W przeciwnym razie może zgłosić chęć wzięcia w niej udziału, wysyłając komunikat `JoinServer`.
+W przeciwnym razie może zgłosić chęć wzięcia w niej udziału, wysyłając komunikat `Join`.
 
-Serwer ignoruje komunikaty `JoinServer` wysłane w trakcie rozgrywki. Serwer ignoruje również komunikaty typu innego niż `JoinServer` w `LobbyState`.
+Serwer ignoruje komunikaty `Join` wysłane w trakcie rozgrywki. Serwer ignoruje również komunikaty typu innego niż `Join` w `Lobby`.
 
 
 ### 2.2. Komunikaty od serwera do klienta
@@ -309,7 +311,7 @@ Klient powinien przechowywać zagregowany stan tak, aby móc wysyłać komunikat
 
 ### 2.6. Podłączanie i odłączanie klientów
 
-Klient wysyła komunikat `JoinServer` do serwera po otrzymaniu dowolnego (poprawnego) komunikatu od GUI, o ile klient jest w stanie `LobbyState` (tzn. nie otrzymał od serwera komunikatu `GameStarted`).
+Klient wysyła komunikat `Join` do serwera po otrzymaniu dowolnego (poprawnego) komunikatu od GUI, o ile klient jest w stanie `Lobby` (tzn. nie otrzymał od serwera komunikatu `GameStarted`).
 
 Po podłączeniu klienta do serwera serwer wysyła do niego komunikat `Hello`.
 Jeśli rozgrywka jeszcze nie została rozpoczęta,
@@ -317,10 +319,10 @@ serwer wysyła komunikaty `AcceptedPlayer` z informacją o podłączonych gracza
 Jeśli rozgrywka już została rozpoczęta, serwer wysyła komunikat `GameStarted` z informacją o rozpoczęciu rozgrywki,
 a następnie wysyła komunikat `Turn` z informacją o aktualnym stanie gry. Numer tury w takim komunikacie to 0.
 
-Jeśli rozgrywka nie jest jeszcze rozpoczęta, to wysłanie przez klienta komunikatu `JoinServer`
+Jeśli rozgrywka nie jest jeszcze rozpoczęta, to wysłanie przez klienta komunikatu `Join`
 powoduje dodanie go do listy graczy. Serwer następnie rozsyła do wszystkich klientów komunikat `AcceptedPlayer`.
 
-Graczom nadawane jest ID w kolejności podłączenia (tzn. odebrania komunikatu `JoinServer` przez serwer). 
+Graczom nadawane jest ID w kolejności podłączenia (tzn. odebrania komunikatu `Join` przez serwer). 
 Dwoje graczy może mieć taką samą nazwę.
 Ponieważ klienci łączą się z serwerem po TCP, wiadomo który komunikat przychodzi od którego klienta.
 
@@ -464,7 +466,7 @@ To serwer decyduje o tym, czy dany ruch jest dozwolony czy nie. Jeśli gracz sto
 
 ### 2.10. Kończenie rozgrywki
 
-Po `game_length` turach serwer wysyła do wszystkich klientów wiadomość `GameEnded` i wraca do stanu `LobbyState`. Klienci, którzy byli do tej pory graczami, przestają nimi być, ale oczywiście mogą się z powrotem zgłosić przy pomocy komunikatu `JoinServer`. Wszystkie komunikaty otrzymane w czasie ostatniej tury rozgrywki są ignorowane.
+Po `game_length` turach serwer wysyła do wszystkich klientów wiadomość `GameEnded` i wraca do stanu `Lobby`. Klienci, którzy byli do tej pory graczami, przestają nimi być, ale oczywiście mogą się z powrotem zgłosić przy pomocy komunikatu `Join`. Wszystkie komunikaty otrzymane w czasie ostatniej tury rozgrywki są ignorowane.
 
 ### 2.11. Błędy w komunikacji
 
@@ -478,8 +480,8 @@ Komunikacja z interfejsem odbywa się po UDP przy użyciu komunikatów serializo
 Klient wysyła do interfejsu graficznego następujące komunikaty:
 
 ```
-enum ClientMessageToDisplay {
-    [0] LobbyState {
+enum DrawMessage {
+    [0] Lobby {
         server_name: String,
         players_count: u8,
         size_x: u16,
@@ -512,9 +514,9 @@ Interfejs wysyła do klienta następujące komunikaty:
 
 ```
 enum InputMessage {
-    [0] PlaceBombServer,
-    [1] PlaceBlockServer,
-    [2] MoveServer { direction: Direction },
+    [0] PlaceBomb,
+    [1] PlaceBlock,
+    [2] Move { direction: Direction },
 }
 ```
 
@@ -535,8 +537,6 @@ kłopotów komunikacyjnych, czasowej niedostępności sieci, zwykłych zmian jej
 konfiguracji itp.
 
 Serwer nie musi obsługiwać więcej niż 25 podłączonych klientów (graczy + obserwatorów) jednocześnie.
-Dodatkowi klienci ponad limit nie mogą jednak przeszkadzać wcześniej
-podłączonym.
 
 Programy powinny umożliwiać komunikację zarówno przy użyciu IPv4, jak i IPv6.
 
@@ -562,16 +562,18 @@ albo obie części.
 
 Termin oddawania części A to 23.05, a termin oddawania części B to 07.06 (siódmy czerwca).
 
-Jako rozwiązanie należy dostarczyć pliki źródłowe oraz plik `makefile`, które
+Jako rozwiązanie należy dostarczyć pliki źródłowe oraz plik `makefile` ALBO `CMakeLists.txt`, które
 należy umieścić jako skompresowane archiwum w Moodle. Archiwum powinno zawierać
 tylko pliki niezbędne do zbudowania programów. Nie wolno w nim umieszczać plików
 binarnych ani pośrednich powstających podczas kompilowania programów.
 
 Po rozpakowaniu dostarczonego archiwum, w wyniku wykonania w jego głównym
-katalogu polecenia `make`, dla części A zadania ma powstać w tym katalogu plik
+katalogu polecenia `make` (`cmake . && make` jeśli używa się `CMake`),
+dla części A zadania ma powstać w tym katalogu plik
 wykonywalny `robots-client` a dla części B zadania – plik
 wykonywalny `robots-server`.
-Ponadto `makefile` powinien obsługiwać cel `clean`, który po wywołaniu kasuje
+
+`makefile` powinien obsługiwać cel `clean`, który po wywołaniu kasuje
 wszystkie pliki powstałe podczas kompilowania.
 
 ## 6. Ocena
@@ -610,13 +612,13 @@ Testy będą obejmowały m.in.:
 
 - P: Klient może wysłać do serwera bardzo dużo ruchów (bo np. gracz wciska szybko różne strzałki), zatem nawet jak na bieżąco odczytujemy dane z socketu, to po upływie tych turn-duration milisekund, w sockecie wciąż mogą zalegać ruchy. Czy przechodzą one na następną turę? Dla przykładu, robię ruchy LPDLLPDGGLPDG, więc też takie trafią do socketu po stronie serwera, i przed upływem turn-duration ms, serwer przetworzył LPDL, więc przyjmuejmy, że w tej turze gracz robi ruch L. Czy pozostałe ruchy zalegające w sockecie (LPDGGLPDG) przechodzą na następną turę?
 - O: Możemy założyć, że zależy to od implementującego, bo testy automatyczne będziemy uruchamiać z dostatecznie długimi turami (rzędu 1s), żeby to się na pewno nie zdarzyło
-- P: Jak rozumiem, gra się zaczyna po tym jak serwer dostanie players-count komunikatów JoinServer. Co jeśli przyjdzie więcej komunikatów JoinServer? Mamy je zignorować?
-- O: Tak, serwer ignoruje komunikaty JoinServer w momencie, gdy rozgrywka jest w trakcie
+- P: Jak rozumiem, gra się zaczyna po tym jak serwer dostanie players-count komunikatów Join. Co jeśli przyjdzie więcej komunikatów Join? Mamy je zignorować?
+- O: Tak, serwer ignoruje komunikaty Join w momencie, gdy rozgrywka jest w trakcie
 - P: Odłączanie graczy rozpoznajemy po tym, że read/write z socketu TCP zwróci 0?
 - O: Tak
-- P: Kiedy mamy zapomnieć o istnieniu danego klienta? Jeśli dobrze rozumiem, to jeśli obserwator (czyli ktoś, kto nawiązał połączenie TCP z serwerem, ale nie wysłał jeszcze komunikatu JoinServer) się odłączy to możemy zapomnieć o nim. Jeśli gracz się odłączy to ślad po nim (tj. pozycja robota itp.) istnieje do końca obecnej gry, ale po jej zakończeniu, możemy o nim zapomnieć?
+- P: Kiedy mamy zapomnieć o istnieniu danego klienta? Jeśli dobrze rozumiem, to jeśli obserwator (czyli ktoś, kto nawiązał połączenie TCP z serwerem, ale nie wysłał jeszcze komunikatu Join) się odłączy to możemy zapomnieć o nim. Jeśli gracz się odłączy to ślad po nim (tj. pozycja robota itp.) istnieje do końca obecnej gry, ale po jej zakończeniu, możemy o nim zapomnieć?
 - O: Dokładnie tak
-- P: Jeśli gra się jeszcze nie rozpoczęła i podłączy się nowy klient, to jak rozumiem, należy wysłać do niego komunikat Hello i serię komunikatów AcceptedPlayer, by poinformować o tym jacy są obecnie gracze w LobbyState. Jeśli w odpowiedzi na to, klient prześle JoinServer to należy do wszystkich obserwatorów i graczy wysłać AcceptedPlayer, żeby wszyscy się dowiedzieli o nowym graczu. Dobrze rozumiem?
+- P: Jeśli gra się jeszcze nie rozpoczęła i podłączy się nowy klient, to jak rozumiem, należy wysłać do niego komunikat Hello i serię komunikatów AcceptedPlayer, by poinformować o tym jacy są obecnie gracze w Lobby. Jeśli w odpowiedzi na to, klient prześle Join to należy do wszystkich obserwatorów i graczy wysłać AcceptedPlayer, żeby wszyscy się dowiedzieli o nowym graczu. Dobrze rozumiem?
 - O: Tak właśnie
 - P: Co jeśli wybuchnie bomba, a na jej "drodze wybuchu" będzie znajdować się inna bomba?
 - O: Nic (to znaczy wybuch jednej bomby nie powoduje wybuchu innych bomb ani ich nie niszczy)
@@ -636,3 +638,46 @@ Testy będą obejmowały m.in.:
 - O: Tak
 - P: Czy dwa bloki o takich samych współrzędnych są traktowane jako jeden blok, czy jako dwa różne?
 - O: Na danym polu może stać tylko jeden blok.
+- P: Czy jeśli w trakcie tury klient wyśle wiele komunikatów i część z nich jest poprawna, część nie, ale ostatni jest niepoprawny (wykonuje niedozwolony ruch), to serwer ma wziąć pod uwagę ostatni poprawny ruch wysłany w tej turze, czy zignorować wszystkie, bo ostatni wysłany był niepoprawny?
+- O: Wysłanie komunikatu niepoprawnego składniowo powoduje rozłączenie klienta. Komunikat poprawny składniowo, ale niemający sensu (np. join w czasie gry) jest ignorowany. Komunikat sensowny może oznaczać chęć wykonania niedozwolonego ruchu (wyjścia poza planszę, wejścia na blok, zablokowania zablokowanego pola), ale nie zmienia to faktu, że jest sensowny. W czasie gry liczy się ostatni nadesłany sensowny komunikat, niezależnie od tego, czy spowoduje poprawny ruch czy nie.
+- P: Czy możemy być pewni, że wiadomość od GUI przyszła z podanego adresu i wiadomości do GUI są wysyłane z podanego portu?
+Innymi słowy, czy wiadomości od GUI mamy odbierać przez receive, czy receive_from (i analogicznie wysyłać przez send, czy send_to)?
+- O: Adres i port GUI, które podaje się w kliencie, służą do wysyłania wiadomości od klienta do GUI. GUI może wysyłać komunikaty z portów efemerycznych. Ale ogólnie najlepiej nic nie zakładać o adresie GUI i być gotowym na odbieranie (poprawnych) wiadomości od kogokolwiek
+- P: Czy możemy założyć, że rozmiar planszy będzie zawierał się w praktycznych wymiarach? Plansza o maksymalnych wymiarach ma kilka miliardów pół co z punktu widzenia gry jest zupełnie niepraktyczne, a utrudnia implementacje logiki gry, gdy musimy założyć, że powinna działać dla takich wymiarów. Ujmując problem inaczej: czy możemy założyć, że deklaracja `T board[size_x][size_y]`, gdzie T jest typem o rozsądnej wielkości będzie poprawna?
+- O: Nie wydaje mi się, żeby tworzenie takiej tablicy dwuwymiarowej było do czegokolwiek potrzebne.
+- P: Co się dzieje, kiedy ktoś podłączy się w trakcie gry, jest to dozwolone? W treści jest zdanie: `Po podłączeniu klienta do serwera serwer wysyła do niego komunikat Hello. Jeśli rozgrywka jeszcze nie została rozpoczęta, serwer wysyła komunikaty AcceptedPlayer z informacją o podłączonych graczach. Jeśli rozgrywka już została rozpoczęta, serwer wysyła komunikat GameStarted z informacją o rozpoczęciu rozgrywki, a następnie wysyła komunikat Turn z informacją o aktualnym stanie gry. Numer tury w takim komunikacie to 0`. Czy jeśli rozgrywka trwa, a podłączy się klient-obserwator, to
+  a) dostaje komunikat Hello, Game Started, a później kolejne tury (tak jak gracze)
+  b) komunikat Hello, później kolejne Tury (jak gracze)
+  c) komunikat Hello, Game Started i tury numerowane od 0?
+- O: Hello, Game Started, turę 0 zawierającą wszystkie zdarzenia do tej pory i potem już normalnie
+- P: Czy klient-obserwator może wysyłać jakieś komunikaty w trakcie gry? 
+- O: Może, ale będą ignorowane
+- P: Komunikat Game do GUI w polu explosions powinien przekazywać tylko wybuchy z poprzedniej tury, tak? Czyli odebranie komunikatu bomb exploded między innymi dla klienta oznacza "zapomnienie" o danej bombie i wrzucenie jej pozycji do explosions?
+- O: Tak
+- P: Klient powinien niezależnie od serwera kontrolować timer bomb i co turę zmniejszać go o 1, nawet patrząc na to, że dostanie komunikat od serwera, gdy bomba wybuchnie?
+- O: Tak. Jak wybuchnie bomba, która nie powinna wybuchnąć, to jest UB (ale można założyć, że serwer ma zawsze rację)
+- P: Mam mały problem z gui - roboty się w nim nie wyświetlają. Przesyłam przykład, plansza na której powinien być tylko robot.
+  Ostatnia wiadomość otrzymana przez gui:
+ ```
+ 2022-05-12T14:04:23.246721Z INFO gui: {"Game":{"server_name":"zabawownia","size_x":10,"size_y":10,"game_length":1000,"turn":10,"players":{"0":{"name":"michal","socket_addr":"127.0.0.1:42704"}},"player_positions":{"0":[3,3]},"blocks":[],"bombs":[],"explosions":[],"scores":{}}}
+ ```
+ - O: W scores musi być player.
+ - P: Czy klient może połączyć się z serwerem zanim otrzyma wiadomość od gui?
+ - O: Klient łączy się z serwerem od razu po uruchomieniu
+ - P: Czy klient może wysyłać Join wielokrotnie?
+ - O: Może, ale to bez sensu
+ - P: Jak powinna zachowywać się bomba wybuchająca w bloku - niszczy ten blok i nie propaguje eksplozji dalej, czy niszczy blok i rozszerza eksplozję do swojego maksymalnego zasięgu?(Oczywiście z pominięciem ingerencji innych bloków)
+ - O: Niszczy i nie propaguje (ale roboty stojące na tym bloku są niszczone)
+ - P: Czy po zakończeniu rozgrywki klient ma wyświetlić lobby, czy planszę, a jeśli lobby, to jakie jest zastosowanie mapy scores w wiadomości GameEnded?
+ - O: Lobby, wiadomość jest potrzebna do testowania, bo inaczej nie da się dowiedzieć jakie były wyniki po ostatniej turze
+ - P: Co robi klient jeżeli otrzyma wiadomość której się nie spodziewał (np. GameEnded zanim otrzymał GameStarted, Turn przed GameStarted, Hello po otrzymaniu początkowego, pierwszego Hello)?
+ - O: UB
+ - P: Jak mamy postępować z wiadomościami które zostały zbudowane poprawnie, ale zawierają ewidentnie niepoprawne wartości (np punkt leżący poza mapą, odwołanie do id gracza lub bomby która nie istnieje)?
+ - O: UB, można zignorować
+ - P: Co zrobić z wiadomością GameStarted/GameEnded, które zawierają id graczy od których nie otrzymaliśmy komunikatu AcceptedPlayer?
+ - O: UB
+ - P: Czy klient może wysyłać do serwera w stanie lobby wiadomości nie będące join?
+ - O: Może, ale zostaną zignorowane (chodzi o to, że mogą np. dojść z opóźnieniem z ostatniej tury, kiedy serwer wróci już do stanu lobby)
+ - P: Jak klient ma postępować z bombami które zostały mu przesłane, ale nie wybuchły, mimo tego, że ich timer spadł poniżej zera?
+ - O: UB
+ 

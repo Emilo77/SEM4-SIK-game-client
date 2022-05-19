@@ -39,6 +39,10 @@ public:
 		}
 	}
 
+	bool field_is_block(Position position) {
+		return fields[position.x][position.y].is_solid;
+	}
+
 	void place_block(Position position) {
 		fields[position.x][position.y].make_block();
 	}
@@ -81,7 +85,11 @@ private:
 	std::map<player_id_t, score_t> scores;
 	std::list<Position> explosions;
 
-	void restart_info();
+	void restart_game_status();
+
+	void hard_restart_info();
+
+	void initialize_maps();
 
 	void decrease_bomb_timers();
 

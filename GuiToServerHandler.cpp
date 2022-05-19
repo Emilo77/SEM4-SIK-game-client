@@ -41,7 +41,7 @@ void GuiToServerHandler::handle_message_from_display(
 ClientMessageToServer
 GuiToServerHandler::prepare_msg_to_server(DisplayMessageToClient &message) {
 	ClientMessageToServer new_message;
-	if (game_info.is_gameplay()) {
+	if (game_info.is_gameplay()) { //todo może dodać sprawdzanie, że my też gramy
 		switch (message.type) {
 			case PlaceBombDisplay:
 				new_message.type = ClientMessageToServerType::PlaceBombServer;
