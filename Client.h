@@ -75,6 +75,8 @@ private:
 	void handle_message_from_server(const boost::system::error_code &error,
 	                                size_t length);
 
+	 bool should_notify_display(ServerMessageToClient &message);
+
 	ClientMessageToDisplay prepare_msg_to_display();
 
 	void send_to_display();
