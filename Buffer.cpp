@@ -364,7 +364,7 @@ Buffer::receive_msg_from_server(size_t expected_size) {
 			break;
 	}
 	if (get_read_size() != expected_size) {
-		return {}; //może niepotrzebne, wtedy zakomentować
+		return {}; //może niepotrzebne, wtedy zakomentowaC
 	}
 	serverMessage->type = (ServerMessageToClientType) message;
 	return serverMessage;

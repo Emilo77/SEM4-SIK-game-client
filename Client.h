@@ -8,38 +8,76 @@
 #include "common.h"
 
 #include <iostream>
-#include <boost/bind/bind.hpp>
-#include <boost/asio.hpp>
-#include <utility>
+#include <thread>
 
-using boost::asio::ip::udp;
-using boost::asio::ip::tcp;
+bool finish = false;
 
+void end_program() { finish = true; }
+
+static void catch_int(int sig) {
+	finish = true;
+	fprintf(stderr, "Signal %d catched. Closing client.\n", sig);
+}
+
+inline static void
+install_signal_handler(int signal, void (*handler)(int), int flags) {
+	struct sigaction action{};
+	sigset_t block_mask;
+
+	sigemptyset(&block_mask);
+	action.sa_handler = handler;
+	action.sa_mask = block_mask;
+	action.sa_flags = flags;
+
+	CHECK_ERRNO(sigaction(signal, &action, nullptr));
+}
 
 class GuiToServerHandler {
 public:
-	GuiToServerHandler(GameInfo &game_info, ClientParameters &parameters)
-			: game_info(game_info),
-			  parameters(parameters) {}
+	GuiToServerHandler(GameInfo &game_info, ClientParameters &parameters,
+	                   int gui_socket, int server_socket, sockaddr_in address)
+			: server_address(address),
+			  server_socket(server_socket),
+			  gui_socket_recv(gui_socket),
+			  game_info(game_info),
+			  parameters(parameters) {
+		run();
+	}
 
-	void connect_with_server();
 
-	void handle_connect(const boost::system::error_code &error);
+private:
+	void run();
 
-	void receive_from_dislay();
+	void receive() {
+		received_length = read(gui_socket_recv, buffer.get(), BUFFER_SIZE);
+		if (received_length < 0) {
+			fprintf(stderr,
+			        "Error when reading message from server (errno %d,%s)\n",
+			        errno, strerror(errno));
+			end_program();
+		} else if (received_length == 0) {
+			end_program();
+		}
+	}
 
-	void handle_message_from_display(const boost::system::error_code &error,
-	                                 size_t length);
+	std::optional<size_t> handle_received_message();
 
 	ClientMessageToServer
 	prepare_msg_to_server(DisplayMessageToClient &message);
 
-	void send_to_server();
+	void send_to_server(size_t send_length) {
+		send_message_to(server_socket, &server_address, buffer.get(),
+		                send_length);
+	}
 
 private:
-	Buffer buffer;
+	sockaddr_in server_address;
+	int server_socket;
+	int gui_socket_recv;
 	GameInfo &game_info;
 	ClientParameters parameters;
+	ssize_t received_length{0};
+	Buffer buffer;
 };
 
 class ServerToGuiHandler {
@@ -51,9 +89,8 @@ public:
 
 private:
 
-	void connect_with_server();
+	void receive();
 
-	void receive_from_server();
 
 	void handle_message_from_server(const boost::system::error_code &error,
 	                                size_t length);
@@ -81,16 +118,24 @@ public:
 
 private:
 	void initialize() {
-		gui_socket = open_udp_socket();
+		gui_address = get_address(parameters.gui_host, parameters.gui_port,
+		                          UDP);
+		server_address = get_address(parameters.server_host,
+		                             parameters.server_port, TCP);
+
+		gui_socket_recv = open_udp_socket();
+		gui_socket_send = open_udp_socket();
 		server_socket = open_tcp_socket();
-//		connect_socket(server_socket, )
+		connect_socket(server_socket, &server_address);
 	}
 
 
 	ClientParameters parameters;
 	GameInfo game_info;
-	bool finish{false};
-	int gui_socket{-1};
+	struct sockaddr_in gui_address;
+	struct sockaddr_in server_address;
+	int gui_socket_recv{-1};
+	int gui_socket_send{-1};
 	int server_socket{-1};
 };
 

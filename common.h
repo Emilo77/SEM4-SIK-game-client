@@ -21,8 +21,8 @@ enum ConnectionType {
 
 
 inline static struct sockaddr_in
-get_address(char *host, uint16_t port, ConnectionType connection) {
-	struct addrinfo hints;
+get_address(std::string &host, uint16_t port, ConnectionType connection) {
+	struct addrinfo hints{};
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_INET; // IPv4
 	switch (connection) {
@@ -37,9 +37,9 @@ get_address(char *host, uint16_t port, ConnectionType connection) {
 	}
 
 	struct addrinfo *address_result;
-	CHECK(getaddrinfo(host, nullptr, &hints, &address_result));
+	CHECK(getaddrinfo(host.c_str(), nullptr, &hints, &address_result));
 
-	struct sockaddr_in address;
+	struct sockaddr_in address{};
 	address.sin_family = AF_INET; // IPv4, zmienić
 	address.sin_addr.s_addr =
 			((struct sockaddr_in *) (address_result->ai_addr))->sin_addr.s_addr; // IP address
@@ -73,10 +73,21 @@ connect_socket(int socket_fd, const struct sockaddr_in *address) {
 	int result = connect(socket_fd, (struct sockaddr *) address,
 	                     sizeof(*address));
 	if (result == -1) {
-		std::cerr << "Couldn't connect to server" << std::endl;
-		std::cerr << "Consider changing the server address" << std::endl;
+		std::cerr << "Could not connect to server." << std::endl;
+		std::cerr
+				<< "Consider checking server status or changing server hostname."
+				<< std::endl;
 	}
+}
 
+void send_message_to(int socket_fd, const struct sockaddr_in *client_address,
+                     const char *message, size_t length) {
+	auto address_length = (socklen_t) sizeof(*client_address);
+	int flags = 0;
+	ssize_t sent_length =
+			sendto(socket_fd, message, length, flags,
+			       (struct sockaddr *) client_address, address_length);
+	ENSURE(sent_length == (ssize_t) length);
 }
 
 

@@ -1,41 +1,14 @@
 #include "Client.h"
 
-void GuiToServerHandler::connect_with_server() {
-	boost::asio::async_connect(socket, server_endpoint,
-	                           boost::bind(
-			                           &GuiToServerHandler::handle_connect,
-			                           this,
-			                           boost::asio::placeholders::error));
-}
-
-
-void
-GuiToServerHandler::handle_connect(const boost::system::error_code &error) {
-	if (!error) {
-		boost::asio::async_read(socket,
-		                        boost::asio::buffer(buffer.get(),
-		                                            BUFFER_SIZE),
-		                        boost::bind(
-				                        &GuiToServerHandler::handle_message_from_display,
-				                        this,
-				                        boost::asio::placeholders::error,
-				                        boost::asio::placeholders::bytes_transferred));
-	} else {
-		//todo
-	}
-}
-
-void GuiToServerHandler::handle_message_from_display(
-		const boost::system::error_code &error,
-		size_t length) {
-	if (!error && length > 0) {
-		auto message = buffer.receive_msg_from_display(length);
+std::optional<size_t> GuiToServerHandler::handle_received_message() {
+	if (received_length > 0) {
+		auto message = buffer.receive_msg_from_display((size_t) received_length);
 		if (message.has_value()) {
-			ClientMessageToServer reply = prepare_msg_to_server(
-					message.value());
-			buffer.insert_msg_to_server(reply);
+			ClientMessageToServer reply = prepare_msg_to_server(message.value());
+			return buffer.insert_msg_to_server(reply);
 		}
 	}
+	return {};
 }
 
 ClientMessageToServer
@@ -60,5 +33,18 @@ GuiToServerHandler::prepare_msg_to_server(DisplayMessageToClient &message) {
 	}
 	return new_message;
 }
+
+void GuiToServerHandler::run() {
+	while (!finish) {
+		receive();
+		auto send = handle_received_message();
+		if (send.has_value()) {
+			send_to_server(send.value());
+		}
+		end_program();
+		std:: cout << "es działa" << std::endl;
+	}
+}
+
 
 
