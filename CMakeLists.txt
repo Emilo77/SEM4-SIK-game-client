@@ -18,8 +18,6 @@ add_executable(robots-client
         Buffer.cpp
         ClientParameters.cpp
         Client.cpp
-        GameInfo.cpp
-        GuiToServerHandler.cpp
-        ServerToGuiHandler.cpp)
+        GameInfo.cpp)
 
 TARGET_LINK_LIBRARIES(robots-client ${USED_LIBS})

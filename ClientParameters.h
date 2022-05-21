@@ -24,8 +24,13 @@ private:
 
 		std::cout << "          " <<"display_ip: " << display_ip << std::endl;
 		std::cout << "          " <<"server_ip: " << server_ip << std::endl;
-//		std::cout << "          " <<"display_address: " << display_address << std::endl;
-//		std::cout << "          " <<"server_address: " << server_address << std::endl;
+
+		std::cout << "          " <<"display_address: " << display_address << std::endl;
+		std::cout << "          " <<"server_address: " << server_address << std::endl;
+
+		std::cout << "          " <<"display_port: " << display_port << std::endl;
+		std::cout << "          " <<"server_port: " << server_port << std::endl;
+
 		std::cout << "          " <<"port: " << port << std::endl;
 		std::cout << "          " <<"player_name: " << player_name << std::endl;
 	}
@@ -35,8 +40,8 @@ public:
 	std::string server_ip;
 	std::string display_address;
 	std::string server_address;
-	std::string display_port;
-	std::string server_port;
+	uint16_t display_port{0};
+	uint16_t server_port{0};
 	std::string player_name;
 	uint16_t port{0};
 

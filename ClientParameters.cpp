@@ -116,9 +116,17 @@ void ClientParameters::check_parameters() {
 			exit_program(0);
 		}
 
+		po::notify(vm);
+
 		compare_ip();
 
-		po::notify(vm);
+		std::string server_port_str, display_port_str;
+		split_ip(server_ip, server_address, server_port_str);
+		split_ip(display_ip, display_address, display_port_str);
+
+		server_port = boost::lexical_cast<uint16_t>(server_port_str);
+		display_port = boost::lexical_cast<uint16_t>(display_port_str);
+
 	}
 	catch (std::exception &e) {
 		std::cerr << "Error: " << e.what() << "\n";
