@@ -21,7 +21,8 @@ void GameInfo::apply_changes_from_server(ServerMessageToClient &msg) {
 }
 
 void GameInfo::apply_Hello(struct Hello &message) {
-	hard_restart_info();
+	clear_containers();
+
 	server_name = message.server_name;
 	players_count = message.players_count;
 	size_x = message.size_x;
@@ -29,6 +30,8 @@ void GameInfo::apply_Hello(struct Hello &message) {
 	game_length = message.game_length;
 	explosion_radius = message.explosion_radius;
 	bomb_timer = message.bomb_timer;
+
+	board.reset(message.size_x, message.size_y);
 }
 
 void GameInfo::apply_AcceptedPlayer(struct AcceptedPlayer &message) {
@@ -36,25 +39,25 @@ void GameInfo::apply_AcceptedPlayer(struct AcceptedPlayer &message) {
 }
 
 void GameInfo::apply_GameStarted(struct GameStarted &message) {
-	restart_game_status(); // może będzie można usunąć
 	change_game_state(GameState::GameplayState);
 	players = message.players;
-	initialize_maps();
+	initialize_containers();
 }
 
 void GameInfo::apply_Turn(struct Turn &message) {
+	explosions.clear();
+	decrease_bomb_timers(); //może nie w tym miejscu
 	turn = message.turn;
 	for (auto &event: message.events) {
 		apply_event(event);
 	}
-	decrease_bomb_timers(); //może nie w tym miejscu
-	increase_score_and_revive_players();
+	change_scores_and_revive_players();
 }
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
 	scores = message.scores;
 	change_game_state(GameState::LobbyState);
-	restart_game_status();
+	clear_containers(); // może niepotrzebne
 }
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
@@ -63,12 +66,10 @@ void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {
 	std::list<Position> new_explosions = calculate_explosion(data);
-	explosions = new_explosions;
+	explosions.merge(new_explosions); //może będzie trzeba usuwać duplikaty
 
 	for (auto robot_id: data.robots_destroyed) {
-		if (players.find(robot_id) == players.end()) {
-			std::cerr << "Player not found!" << std::endl;
-		} else {
+		if (players.find(robot_id) != players.end()) {
 			players.at(robot_id).explode();
 		}
 	}
@@ -81,9 +82,7 @@ void GameInfo::apply_BombExploded(struct BombExploded &data) {
 }
 
 void GameInfo::apply_PlayerMoved(struct PlayerMoved &data) {
-	if (players.find(data.player_id) == players.end()) {
-		std::cerr << "Player not found!" << std::endl;
-	} else {
+	if (players.find(data.player_id) != players.end()) {
 		player_positions.at(data.player_id) = data.position;
 	}
 }
@@ -110,27 +109,17 @@ void GameInfo::apply_event(Event &event) {
 	}
 }
 
-void GameInfo::restart_game_status() {
-	board.reset(size_x, size_y);
+void GameInfo::clear_containers() {
 	players.clear();
 	player_positions.clear();
 	bombs.clear();
 	scores.clear();
+	explosions.clear();
+
 }
 
-
-void GameInfo::hard_restart_info() {
-	change_game_state(GameState::LobbyState);
-	board.reset(size_x, size_y);
-	server_name.clear();
-	players.clear();
-	player_positions.clear();
-	bombs.clear();
-	scores.clear();
-}
-
-void GameInfo::initialize_maps() {
-	for (auto &new_player_pair : players) {
+void GameInfo::initialize_containers() {
+	for (auto &new_player_pair: players) {
 		scores.insert({new_player_pair.first, 0});
 		player_positions.insert({new_player_pair.first, Position()});
 	}
@@ -142,8 +131,8 @@ void GameInfo::decrease_bomb_timers() {
 	}
 }
 
-void GameInfo::increase_score_and_revive_players() {
-	for (auto &player_pair : players) {
+void GameInfo::change_scores_and_revive_players() {
+	for (auto &player_pair: players) {
 		if (player_pair.second.is_dead()) {
 			scores.at(player_pair.first)++;
 			player_pair.second.revive();
@@ -191,11 +180,11 @@ Lobby GameInfo::create_lobby_msg() {
 
 struct GamePlay GameInfo::create_gameplay_msg() {
 	std::list<Position> blocks = board.return_blocks();
-	std::list<Bomb> bombs_vector;
+	std::list<Bomb> bombs_list;
 	for (auto &bomb: bombs) {
-		bombs_vector.push_back(bomb.second);
+		bombs_list.push_back(bomb.second);
 	}
 
 	return {server_name, size_x, size_y, game_length, turn, players,
-	        player_positions, blocks, bombs_vector, explosions, scores};
+	        player_positions, blocks, bombs_list, explosions, scores};
 }

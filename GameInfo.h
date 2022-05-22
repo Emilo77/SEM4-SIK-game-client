@@ -8,6 +8,7 @@
 #include <iostream>
 #include <mutex>
 #include "Utils.h"
+#include "ClientParameters.h"
 
 static std::mutex game_protection;
 
@@ -15,17 +16,11 @@ class Field {
 	bool solid{false};
 
 public:
-	void make_block() {
-		solid = true;
-	}
+	void make_block() { solid = true; }
 
-	void make_air() {
-		solid = false;
-	}
+	void make_air() { solid = false; }
 
-	bool is_solid() {
-		return solid;
-	}
+	bool is_solid() { return solid; }
 
 };
 
@@ -92,17 +87,29 @@ private:
 	std::map<player_id_t, score_t> scores;
 	std::list<Position> explosions;
 
-	void restart_game_status();
+public:
+	void apply_changes_from_server(ServerMessageToClient &msg);
 
-	void hard_restart_info();
+	// Dodajemy mutex, aby zapewnić atomowość funkcji
+	bool is_gameplay();
 
-	void initialize_maps();
+	void change_game_state(GameState state);
+
+	Lobby create_lobby_msg();
+
+	GamePlay create_gameplay_msg();
+
+private:
+
+	void clear_containers();
+
+	void initialize_containers();
 
 	void decrease_bomb_timers();
 
 	std::list<Position> calculate_explosion(struct BombExploded &data);
 
-	void increase_score_and_revive_players();
+	void change_scores_and_revive_players();
 
 	void apply_event(Event &event);
 
@@ -123,20 +130,6 @@ private:
 	void apply_PlayerMoved(struct PlayerMoved &data);
 
 	void apply_BlockPlaced(struct BlockPlaced &data);
-
-
-public:
-
-	void apply_changes_from_server(ServerMessageToClient &msg);
-
-	// Dodajemy mutex, aby zapewnić atomowość funkcji
-	bool is_gameplay();
-
-	void change_game_state(GameState state);
-
-	Lobby create_lobby_msg();
-
-	GamePlay create_gameplay_msg();
 };
 
 
