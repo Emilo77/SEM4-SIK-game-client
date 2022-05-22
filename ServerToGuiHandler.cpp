@@ -1,31 +1,22 @@
 #include "Client.h"
 
-void connect_with_server() {
-
-}
-
-void receive_from_server() {
-
-}
-
-void ServerToGuiHandler::handle_message_from_server(
-		const boost::system::error_code &error,
-		size_t length) {
-	if (!error) {
-		auto message = buffer.receive_msg_from_server(length);
+std::optional<size_t> ServerToGuiHandler::handle_message_from_server() {
+	if (received_length > 0) {
+		auto message = buffer.receive_msg_from_server((size_t) received_length);
 		if (message.has_value()) {
 			game_info.apply_changes_from_server(message.value());
 
 			if (should_notify_display(message.value())) {
 				ClientMessageToDisplay reply = prepare_msg_to_display();
-				buffer.insert_msg_to_display(reply);
+				return buffer.insert_msg_to_display(reply);
 			}
 		} else {
-			// rozłącz z serwerem
+			end_program();
 		}
 	} else {
-		// rozłącz z serwerem (?)
+		end_program();
 	}
+	return {};
 }
 
 
@@ -43,4 +34,31 @@ void send_to_display() {
 bool ServerToGuiHandler::should_notify_display(ServerMessageToClient &message) {
 	return (message.type == AcceptedPlayer && !game_info.is_gameplay())
 	       || (message.type == Turn && game_info.is_gameplay());
+}
+
+void ServerToGuiHandler::receive() {
+	received_length = read(server_socket, buffer.get(), BUFFER_SIZE);
+	if (received_length < 0) {
+		fprintf(stderr,
+		        "Error when reading message from server (errno %d,%s)\n",
+		        errno, strerror(errno));
+		end_program();
+	} else if (received_length == 0) {
+		end_program();
+	}
+}
+
+void ServerToGuiHandler::send_to_display(size_t send_length) {
+	send_message_to(gui_socket_send, &gui_address_send, buffer.get(),
+	                send_length);
+}
+
+void ServerToGuiHandler::run() {
+	while (!finish) {
+		receive();
+		auto send = handle_message_from_server();
+		if (send.has_value()) {
+			send_to_display(send.value());
+		}
+	}
 }

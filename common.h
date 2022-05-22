@@ -14,6 +14,19 @@
 
 #define NO_FLAGS 0
 
+inline static void
+install_signal_handler(int signal, void (*handler)(int), int flags) {
+	struct sigaction action{};
+	sigset_t block_mask;
+
+	sigemptyset(&block_mask);
+	action.sa_handler = handler;
+	action.sa_mask = block_mask;
+	action.sa_flags = flags;
+
+	CHECK_ERRNO(sigaction(signal, &action, nullptr));
+}
+
 enum ConnectionType {
 	TCP,
 	UDP,
@@ -80,8 +93,9 @@ connect_socket(int socket_fd, const struct sockaddr_in *address) {
 	}
 }
 
-void send_message_to(int socket_fd, const struct sockaddr_in *client_address,
-                     const char *message, size_t length) {
+static void
+send_message_to(int socket_fd, const struct sockaddr_in *client_address,
+                const char *message, size_t length) {
 	auto address_length = (socklen_t) sizeof(*client_address);
 	int flags = 0;
 	ssize_t sent_length =
