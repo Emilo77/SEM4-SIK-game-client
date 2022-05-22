@@ -101,11 +101,18 @@ public:
 
 private:
 
+	void remove_duplicated_explosions();
+
+	bool is_correct_position(Position position) const;
+
 	void clear_containers();
 
 	void initialize_containers();
 
 	void decrease_bomb_timers();
+
+	void explode_in_direction(Position &bomb_pos, Direction direction,
+	                                    std::list<Position> &exploded);
 
 	std::list<Position> calculate_explosion(struct BombExploded &data);
 

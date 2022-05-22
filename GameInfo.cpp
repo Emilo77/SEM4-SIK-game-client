@@ -1,5 +1,19 @@
 #include "GameInfo.h"
 
+static std::pair<int, int> direction_to_pair(Direction direction) {
+	switch (direction) {
+		case Up:
+			return {0, 1};
+		case Right:
+			return {1, 0};
+		case Down:
+			return {0, -1};
+		case Left:
+			return {-1, 0};
+	}
+	return {0, 0};
+}
+
 void GameInfo::apply_changes_from_server(ServerMessageToClient &msg) {
 	switch (msg.type) {
 		case Hello:
@@ -52,6 +66,7 @@ void GameInfo::apply_Turn(struct Turn &message) {
 		apply_event(event);
 	}
 	change_scores_and_revive_players();
+	remove_duplicated_explosions(); // może niepotrzebne
 }
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
@@ -109,6 +124,16 @@ void GameInfo::apply_event(Event &event) {
 	}
 }
 
+void GameInfo::remove_duplicated_explosions() {
+	explosions.sort();
+	auto duplicates_iter = std::unique(explosions.begin(), explosions.end());
+	explosions.erase(duplicates_iter, explosions.end());
+}
+
+bool GameInfo::is_correct_position(Position position) const {
+	return position.x < size_x && position.y < size_y;
+}
+
 void GameInfo::clear_containers() {
 	players.clear();
 	player_positions.clear();
@@ -140,6 +165,24 @@ void GameInfo::change_scores_and_revive_players() {
 	}
 }
 
+void GameInfo::explode_in_direction(Position &bomb_pos, Direction direction,
+                                    std::list<Position> &exploded) {
+
+	auto pair = direction_to_pair(direction);
+
+	for (int i = 1; i <= explosion_radius; i++) {
+		Position new_pos(static_cast<uint16_t>(bomb_pos.x + i * pair.first),
+		                 static_cast<uint16_t>(bomb_pos.x + i * pair.second));
+
+		if (is_correct_position(new_pos)) {
+			exploded.push_back(new_pos);
+		}
+		if (board.field_is_block(new_pos)) {
+			break;
+		}
+	}
+}
+
 
 std::list<Position> GameInfo::calculate_explosion(struct BombExploded &data) {
 	std::list<Position> exploded;
@@ -149,10 +192,10 @@ std::list<Position> GameInfo::calculate_explosion(struct BombExploded &data) {
 		return exploded;
 	}
 
-//	for(int i = 1; i <= explosion_radius; i++) {
-//
-//	}
-	//todo
+	explode_in_direction(bomb_pos, Up, exploded);
+	explode_in_direction(bomb_pos, Right, exploded);
+	explode_in_direction(bomb_pos, Down, exploded);
+	explode_in_direction(bomb_pos, Left, exploded);
 
 	return exploded;
 }
