@@ -84,25 +84,25 @@ public:
 	std::string name;
 	std::string address;
 
-	bool is_dead() { return dead; }
+	bool is_dead() const { return dead; }
 
 	void explode() { dead = true; }
 
 	void revive() { dead = false; }
 };
 
-static std::pair<int, int> direction_to_pair(Direction &direction) {
-	switch (direction) {
-		case Up:
-			return {0, 1};
-		case Right:
-			return {1, 0};
-		case Down:
-			return {0, -1};
-		case Left:
-			return {-1, 0};
-	}
-}
+//static std::pair<int, int> direction_to_pair(Direction &direction) {
+//	switch (direction) {
+//		case Up:
+//			return {0, 1};
+//		case Right:
+//			return {1, 0};
+//		case Down:
+//			return {0, -1};
+//		case Left:
+//			return {-1, 0};
+//	}
+//}
 
 enum EventType {
 	BombPlaced = 0,
@@ -140,22 +140,6 @@ public:
 			: type(type), data(data) {
 	}
 };
-
-static bool invalid_direction(uint8_t direction) {
-	return direction > 3;
-}
-
-static bool invalid_server_message_type(uint8_t type) {
-	return type > 4;
-}
-
-static bool invalid_display_message_type(uint8_t type) {
-	return type > 2;
-}
-
-static bool invalid_game_state(uint8_t state) {
-	return state > 1;
-}
 
 
 #endif//ZADANIE02_EVENT_H

@@ -1,5 +1,11 @@
 #include "Buffer.h"
 
+static bool invalid_direction(uint8_t direction) {return direction > 3;}
+
+static bool invalid_server_message_type(uint8_t type) {return type > 4;}
+
+static bool invalid_display_message_type(uint8_t type) {return type > 2;}
+
 uint8_t Buffer::convert_to_send(uint8_t number) { return number; }
 
 uint16_t Buffer::convert_to_send(uint16_t number) { return htobe16(number); }
@@ -343,8 +349,7 @@ Buffer::receive_msg_from_server(size_t expected_size) {
 	}
 	switch ((ServerMessageToClientType) message) {
 		case Hello:
-			receive_hello(
-					std::get<struct Hello>(serverMessage->data));
+			receive_hello(std::get<struct Hello>(serverMessage->data));
 			break;
 		case AcceptedPlayer:
 			receive_accepted_player(
@@ -355,12 +360,10 @@ Buffer::receive_msg_from_server(size_t expected_size) {
 					std::get<struct GameStarted>(serverMessage->data));
 			break;
 		case Turn:
-			receive_turn(
-					std::get<struct Turn>(serverMessage->data));
+			receive_turn(std::get<struct Turn>(serverMessage->data));
 			break;
 		case GameEnded:
-			receive_game_ended(
-					std::get<struct GameEnded>(serverMessage->data));
+			receive_game_ended(std::get<struct GameEnded>(serverMessage->data));
 			break;
 	}
 	if (get_read_size() != expected_size) {
@@ -407,3 +410,5 @@ Buffer::receive_msg_from_display(size_t expected_size) {
 	}
 	return message;
 }
+
+

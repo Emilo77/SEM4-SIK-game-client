@@ -124,6 +124,8 @@ private:
 
 	void send_game(GamePlay &message);
 
+
+
 public:
 	void reset_read_index() { read_index = 0; }
 
