@@ -5,11 +5,10 @@ std::optional<size_t> ServerToGuiHandler::handle_message_from_server() {
 		auto message = buffer.receive_msg_from_server((size_t) received_length);
 		if (message.has_value()) {
 
-			game_protection.lock();
 			game_info.apply_changes_from_server(message.value());
-			game_protection.unlock();
 
 			if (should_notify_display(message.value())) {
+
 				ClientMessageToDisplay reply = prepare_msg_to_display();
 				return buffer.insert_msg_to_display(reply);
 			}

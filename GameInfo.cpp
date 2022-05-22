@@ -37,7 +37,7 @@ void GameInfo::apply_AcceptedPlayer(struct AcceptedPlayer &message) {
 
 void GameInfo::apply_GameStarted(struct GameStarted &message) {
 	restart_game_status(); // może będzie można usunąć
-	game_state = GameState::GameplayState;
+	change_game_state(GameState::GameplayState);
 	players = message.players;
 	initialize_maps();
 }
@@ -53,7 +53,7 @@ void GameInfo::apply_Turn(struct Turn &message) {
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
 	scores = message.scores;
-	game_state = GameState::LobbyState;
+	change_game_state(GameState::LobbyState);
 	restart_game_status();
 }
 
@@ -120,8 +120,8 @@ void GameInfo::restart_game_status() {
 
 
 void GameInfo::hard_restart_info() {
+	change_game_state(GameState::LobbyState);
 	board.reset(size_x, size_y);
-	game_state = GameState::LobbyState;
 	server_name.clear();
 	players.clear();
 	player_positions.clear();
@@ -134,7 +134,7 @@ void GameInfo::initialize_maps() {
 		scores.insert({new_player_pair.first, 0});
 		player_positions.insert({new_player_pair.first, Position()});
 	}
-};
+}
 
 void GameInfo::decrease_bomb_timers() {
 	for (auto &bombs_element: bombs) {
@@ -166,6 +166,22 @@ std::list<Position> GameInfo::calculate_explosion(struct BombExploded &data) {
 	//todo
 
 	return exploded;
+}
+
+bool GameInfo::is_gameplay() {
+	bool result = false;
+	game_protection.lock();
+	if (game_state == GameplayState) {
+		result = true;
+	}
+	game_protection.unlock();
+	return result;
+}
+
+void GameInfo::change_game_state(GameState state) {
+	game_protection.lock();
+	game_state = state;
+	game_protection.unlock();
 }
 
 Lobby GameInfo::create_lobby_msg() {

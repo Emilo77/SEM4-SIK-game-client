@@ -12,7 +12,6 @@
 #include <mutex>
 
 static bool finish = false;
-static std::mutex game_protection;
 
 static void end_program() { finish = true; }
 
@@ -75,7 +74,6 @@ private:
 	void run();
 
 	void receive();
-
 
 	std::optional<size_t> handle_message_from_server();
 

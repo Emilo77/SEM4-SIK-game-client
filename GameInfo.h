@@ -7,6 +7,9 @@
 #include "Utils.h"
 #include "Messages.h"
 #include <iostream>
+#include <mutex>
+
+std::mutex game_protection;
 
 class Field {
 public:
@@ -122,7 +125,11 @@ public:
 
 	void apply_changes_from_server(ServerMessageToClient &msg);
 
-	bool is_gameplay() { return game_state == GameplayState; }
+	// Dodajemy mutex, aby zapewnić atomowość funkcji
+	bool is_gameplay();
+
+	void change_game_state(GameState state);
+
 
 	Lobby create_lobby_msg();
 
