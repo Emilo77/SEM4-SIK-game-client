@@ -16,7 +16,11 @@ std::optional<size_t> GuiToServerHandler::handle_received_message() {
 ClientMessageToServer
 GuiToServerHandler::prepare_msg_to_server(DisplayMessageToClient &message) {
 	ClientMessageToServer new_message;
-	if (game_info.is_gameplay()) { //todo może dodać sprawdzanie, że my też gramy
+	game_protection.lock();
+	bool is_gameplay = game_info.is_gameplay();
+	game_protection.unlock();
+
+	if (is_gameplay) { //todo może dodać sprawdzanie, że my też gramy
 		switch (message.type) {
 			case PlaceBombDisplay:
 				new_message.type = ClientMessageToServerType::PlaceBombServer;

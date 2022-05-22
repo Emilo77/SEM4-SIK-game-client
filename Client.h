@@ -9,8 +9,10 @@
 
 #include <iostream>
 #include <thread>
+#include <mutex>
 
 static bool finish = false;
+static std::mutex game_protection;
 
 static void end_program() { finish = true; }
 
