@@ -4,23 +4,27 @@
 #include <string>
 #include <set>
 #include <map>
-#include "Utils.h"
 #include "Messages.h"
 #include <iostream>
 #include <mutex>
+#include "Utils.h"
 
-std::mutex game_protection;
+static std::mutex game_protection;
 
 class Field {
-public:
-	bool is_solid{false};
+	bool solid{false};
 
+public:
 	void make_block() {
-		is_solid = true;
+		solid = true;
 	}
 
 	void make_air() {
-		is_solid = false;
+		solid = false;
+	}
+
+	bool is_solid() {
+		return solid;
 	}
 
 };
@@ -43,7 +47,7 @@ public:
 	}
 
 	bool field_is_block(Position position) {
-		return fields[position.x][position.y].is_solid;
+		return fields[position.x][position.y].is_solid();
 	}
 
 	void place_block(Position position) {
@@ -58,7 +62,7 @@ public:
 		std::list<Position> blocks;
 		for (size_t column = 0; column < fields.size(); column++) {
 			for (size_t row = 0; row < fields[column].size(); row++) {
-				if (fields[column][row].is_solid) {
+				if (fields[column][row].is_solid()) {
 					blocks.emplace_back(column, row);
 				}
 			}
@@ -129,7 +133,6 @@ public:
 	bool is_gameplay();
 
 	void change_game_state(GameState state);
-
 
 	Lobby create_lobby_msg();
 
