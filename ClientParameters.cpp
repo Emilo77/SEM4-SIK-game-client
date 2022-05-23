@@ -49,21 +49,6 @@ static inline void check_port_str(std::string &port_str) {
 	}
 }
 
-//todo może trzeba spradzić, czy porty takie same
-static inline void check_host(const std::string &address) {
-	if (address.empty()) {
-		throw po::validation_error(po::validation_error::invalid_option_value,
-		                           "host");
-	}
-	boost::system::error_code ec;
-	boost::asio::ip::address::from_string(address, ec);
-	if (ec) {
-		std::cerr << "Invalid ip address" << std::endl;
-		throw po::validation_error(po::validation_error::invalid_option_value,
-		                           "ip address");
-	}
-}
-
 static inline void check_address(std::string ip) {
 	std::string host, port;
 	split_ip(ip, host, port);

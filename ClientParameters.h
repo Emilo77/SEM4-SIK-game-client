@@ -11,15 +11,12 @@ class ClientParameters {
 private:
 	int argc{0};
 	char **argv;
-	enum wrong_parameters {
-		//todo
-	};
 
 	void compare_address() const;
 
 	void check_parameters();
 
-	void print_parameters() const {
+	void print_parameters() const { //usunąć później
 		std::cout << "ClientParameters: " << std::endl;
 
 		std::cout << "          " << "gui_address: " << gui_address << std::endl;
