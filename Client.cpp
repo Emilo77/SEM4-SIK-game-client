@@ -8,7 +8,6 @@ void Client::run() {
 }
 
 int main(int argc, char *argv[]) {
-//	install_signal_handler(SIGINT, catch_int, SA_RESTART);
 	ClientParameters parameters(argc, argv);
 	Client client(parameters);
 }
