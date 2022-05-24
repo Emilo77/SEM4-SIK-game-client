@@ -66,7 +66,7 @@ void GameInfo::apply_Turn(struct Turn &message) {
 		apply_event(event);
 	}
 	change_scores_and_revive_players();
-	remove_duplicated_explosions(); // może niepotrzebne
+	explosions = board.return_explosions();
 }
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
@@ -80,8 +80,7 @@ void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
 }
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {
-	std::list<Position> new_explosions = calculate_explosion(data);
-	explosions.merge(new_explosions); //może będzie trzeba usuwać duplikaty
+	mark_explosions(data);
 
 	for (auto robot_id: data.robots_destroyed) {
 		if (players.find(robot_id) != players.end()) {
@@ -90,7 +89,7 @@ void GameInfo::apply_BombExploded(struct BombExploded &data) {
 	}
 
 	for (auto &position: data.blocks_destroyed) {
-		board.explode_block(position);
+		board.at(position).make_air();
 	}
 
 	bombs.erase(data.bomb_id);
@@ -104,7 +103,7 @@ void GameInfo::apply_PlayerMoved(struct PlayerMoved &data) {
 
 
 void GameInfo::apply_BlockPlaced(struct BlockPlaced &data) {
-	board.place_block(data.position);
+	board.at(data.position).make_block();
 }
 
 void GameInfo::apply_event(Event &event) {
@@ -122,12 +121,6 @@ void GameInfo::apply_event(Event &event) {
 			apply_BlockPlaced(std::get<struct BlockPlaced>(event.data));
 			break;
 	}
-}
-
-void GameInfo::remove_duplicated_explosions() {
-	explosions.sort();
-	auto duplicates_iter = std::unique(explosions.begin(), explosions.end());
-	explosions.erase(duplicates_iter, explosions.end());
 }
 
 bool GameInfo::is_correct_position(Position position) const {
@@ -165,8 +158,7 @@ void GameInfo::change_scores_and_revive_players() {
 	}
 }
 
-void GameInfo::explode_in_direction(Position &bomb_pos, Direction direction,
-                                    std::list<Position> &exploded) {
+void GameInfo::mark_explosions_in_direction(Position &bomb_pos, Direction direction) {
 
 	auto pair = direction_to_pair(direction);
 
@@ -175,29 +167,30 @@ void GameInfo::explode_in_direction(Position &bomb_pos, Direction direction,
 		                 static_cast<uint16_t>(bomb_pos.x + i * pair.second));
 
 		if (is_correct_position(new_pos)) {
-			exploded.push_back(new_pos);
+			board.at(new_pos).mark_exploded();
 		}
-		if (board.field_is_block(new_pos)) {
+		if (board.at(new_pos).is_solid()) {
 			break;
 		}
 	}
 }
 
 
-std::list<Position> GameInfo::calculate_explosion(struct BombExploded &data) {
-	std::list<Position> exploded;
+void GameInfo::mark_explosions(struct BombExploded &data) {
+
 	Position bomb_pos = bombs.at(data.bomb_id).position;
-	exploded.push_back(bomb_pos);
-	if (board.field_is_block(bomb_pos)) {
-		return exploded;
+
+	board.at(bomb_pos).mark_exploded();
+
+	if (board.at(bomb_pos).is_solid()) {
+		return;
 	}
 
-	explode_in_direction(bomb_pos, Up, exploded);
-	explode_in_direction(bomb_pos, Right, exploded);
-	explode_in_direction(bomb_pos, Down, exploded);
-	explode_in_direction(bomb_pos, Left, exploded);
+	mark_explosions_in_direction(bomb_pos, Up);
+	mark_explosions_in_direction(bomb_pos, Right);
+	mark_explosions_in_direction(bomb_pos, Down);
+	mark_explosions_in_direction(bomb_pos, Left);
 
-	return exploded;
 }
 
 bool GameInfo::is_gameplay() {

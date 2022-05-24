@@ -1,117 +1,75 @@
 #ifndef ZADANIE02_CLIENT_H
 #define ZADANIE02_CLIENT_H
 
-#include "Buffer.h"
-#include "ClientParameters.h"
-#include "GameInfo.h"
-#include "Messages.h"
-#include "common.h"
+#include "Handlers.h"
 
 #include <iostream>
 #include <thread>
-#include <mutex>
-
-static bool finish = false;
-
-static void end_program() { finish = true; }
-
-static void catch_int(int sig) {
-	finish = true;
-	fprintf(stderr, "Signal %d catched. Closing client.\n", sig);
-}
-
-class GuiToServerHandler {
-public:
-	GuiToServerHandler(GameInfo &game_info, ClientParameters &parameters,
-	                   int gui_socket, int server_socket, sockaddr_in &address)
-			: server_address(address),
-			  server_socket(server_socket),
-			  gui_socket_recv(gui_socket),
-			  game_info(game_info),
-			  parameters(parameters) {
-		run();
-	}
 
 
-private:
-	void run();
-
-	void receive();
-
-	std::optional<size_t> handle_received_message();
-
-	ClientMessageToServer
-	prepare_msg_to_server(DisplayMessageToClient &message);
-
-	void send_to_server(size_t send_length);
-
-private:
-	sockaddr_in server_address;
-	int server_socket;
-	int gui_socket_recv;
-	GameInfo &game_info;
-	ClientParameters parameters;
-	ssize_t received_length{0};
-	Buffer buffer;
-};
-
-class ServerToGuiHandler {
-
-public:
-	ServerToGuiHandler(GameInfo &game_info, ClientParameters &parameters,
-	                   int gui_socket_send, int server_socket,
-	                   sockaddr_in gui_address)
-			: gui_address_send(gui_address),
-			  server_socket(server_socket),
-			  gui_socket_send(gui_socket_send),
-			  game_info(game_info),
-			  parameters(parameters) {
-		run();
-	}
-
-private:
-
-	void run();
-
-	void receive();
-
-	std::optional<size_t> handle_message_from_server();
-
-	bool should_notify_display(ServerMessageToClient &message);
-
-	ClientMessageToDisplay prepare_msg_to_display();
-
-	void send_to_display(size_t send_length);
-
-
-	sockaddr_in gui_address_send;
-	int server_socket;
-	int gui_socket_send;
-	GameInfo &game_info;
-	ClientParameters parameters;
-	ssize_t received_length{0};
-	Buffer buffer;
-};
+//static bool finish = false;
+//
+//static void end_program() { finish = true; }
+//
+//static void catch_int(int sig) {
+//	finish = true;
+//	fprintf(stderr, "Signal %d catched. Closing client.\n", sig);
+//}
 
 class Client {
 
 public:
 	explicit Client(ClientParameters &parameters) : parameters(parameters) {
-		initialize();
+		try {
+			udp::resolver gui_resolver(io_context);
+			udp::endpoint gui_endpoints = *gui_resolver.resolve(
+					parameters.gui_address,
+					boost::lexical_cast<std::string>(parameters.gui_port));
+
+
+			tcp::resolver tcp_resolver(io_context);
+			tcp::endpoint tcp_endpoints = *tcp_resolver.resolve(
+					parameters.server_address,
+					boost::lexical_cast<std::string>(parameters.server_port));
+
+
+			udp::socket gui_sender(io_context);
+			udp::socket gui_receiver(io_context,
+			                         udp::endpoint(udp::v6(), parameters.port));
+
+			tcp::socket server_receiver(io_context);
+
+			gui_receiver.open(udp::v6());
+			gui_receiver.bind(udp::endpoint(udp::v6(), parameters.port));
+
+			gui_sender.open(udp::v6());
+
+			server_receiver.connect(tcp_endpoints);
+
+		}
+		catch (std::exception &e) {
+			std::cerr << "Exception: " << e.what() << "\n";
+		}
 	}
 
 	void run();
 
 private:
-	void initialize();
+	void initialize() {
+
+
+		gui_sender
+
+	}
+
 
 	ClientParameters parameters;
 	GameInfo game_info;
-	struct sockaddr_in gui_address{};
-	struct sockaddr_in server_address{};
-	int gui_socket_recv{-1};
-	int gui_socket_send{-1};
-	int server_socket{-1};
+	boost::asio::io_context io_context;
+
+
+
+	bool finish{false};
 };
 
 
