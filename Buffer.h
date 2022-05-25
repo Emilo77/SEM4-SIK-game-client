@@ -77,13 +77,13 @@ private:
 	void receive(Player &player);
 
 	/* Odbieranie eventu */
-	void receive_event_content(struct BombPlaced &data);
+	struct BombPlaced receive_bomb_placed();
 
-	void receive_event_content(struct BombExploded &data);
+	struct BombExploded receive_bomb_exploded();
 
-	void receive_event_content(struct PlayerMoved &data);
+	struct PlayerMoved receive_player_moved();
 
-	void receive_event_content(struct BlockPlaced &data);
+	struct BlockPlaced receive_block_placed();
 
 	void receive_event(EventType type, Event &event);
 
@@ -109,15 +109,15 @@ private:
 	void insert_move(Direction direction);
 
 	/* Odbieranie wiadomości wysyłanych od serwera */
-	void receive_hello(struct Hello &message);
+	struct Hello receive_hello();
 
-	void receive_accepted_player(struct AcceptedPlayer &message);
+	struct AcceptedPlayer receive_accepted_player();
 
-	void receive_game_started(struct GameStarted &message);
+	struct GameStarted receive_game_started();
 
-	void receive_turn(struct Turn &message);
+	struct Turn receive_turn();
 
-	void receive_game_ended(struct GameEnded &message);
+	struct GameEnded receive_game_ended();
 
 	/* Wstawianie wiadomości wysyłanych do gui */
 	void send_lobby(Lobby &message);
@@ -138,7 +138,7 @@ public:
 
 	/* Odbieranie wiadomości wysyłanej od serwera */
 	std::optional<ServerMessageToClient>
-	receive_msg_from_server(size_t expected_size);
+	receive_msg_from_server();
 
 	/* Wstawianie wiadomości wysyłanej do gui */
 	size_t insert_msg_to_display(ClientMessageToDisplay &drawMessage);

@@ -38,9 +38,7 @@ void Client::initialize() {
 		server_socket.value().set_option(tcp::no_delay(true));
 
 		/* Dodanie obsługi zakończenia programu przez sygnał SIGINT */
-		boost::asio::signal_set signals(io_context, SIGINT);
 		signals.async_wait(handler);
-
 	}
 	/* W przypadku błędu wypisujemy błąd i kończymy działanie programu */
 	catch (std::exception &e) {
@@ -111,7 +109,7 @@ void Client::do_handle_gui(const boost::system::error_code &ec) {
 			do_send_server(send.value());
 		}
 	} else {
-		std::cout << "Error: " << ec.message() << std::endl;
+		std::cout << "Error receiving from gui: " << ec.message() << std::endl;
 		exit_program(EXIT_FAILURE);
 	}
 }
@@ -129,24 +127,22 @@ void Client::do_send_server(size_t send_length) {
 			});
 }
 
-
 std::optional<size_t> Client::handle_message_from_server() {
 	if (received_length > 0) {
 		/* Wyciągamy i przetwarzamy wiadomość z bufora. */
-		auto message = buffer.receive_msg_from_server((size_t) received_length);
+		auto message = buffer.receive_msg_from_server();
 		if (message.has_value()) {
 			/* Jeżeli wiadomość jest poprawna, aktualizujemy stan gry. */
 			game_info.apply_changes_from_server(message.value());
 
-			/* Jeżeli otrzymaliśmy komunikat PlayerAccepted lub Turn,
-			 * wysyłamy odpowiedź do GUI.*/
-			if (should_notify_display(message.value())) {
-
-				/* Tworzymy nową wiadomość do serwera,
-				 * tę wiadomość wstawiamy do bufora. */
-				ClientMessageToDisplay reply = prepare_msg_to_display();
-				return buffer.insert_msg_to_display(reply);
-			}
+				/* Na podstawie otrzymanego komunikatu, odpowiadamy GUI:
+				 * Turn: wysyłamy Game
+				 * AcceptedPlayer, GameEnded, Hello: wysyłamy Lobby
+				 * GameStarted: nie wysyłamy nic */
+				auto reply = prepare_msg_to_display(message.value().type);
+				if (reply.has_value()) {
+					return buffer.insert_msg_to_display(reply.value());
+				}
 		} else {
 			/* Jeżeli wiadomość jest w niepoprawnym formacie, rozłączamy się
 			 * i kończymy działanie programu. */
@@ -168,17 +164,17 @@ std::optional<size_t> Client::handle_message_from_server() {
 }
 
 
-ClientMessageToDisplay Client::prepare_msg_to_display() {
+std::optional<ClientMessageToDisplay> Client::prepare_msg_to_display(ServerMessageToClientType type) {
+	std::optional<ClientMessageToDisplay> reply;
 	/* Tworzymy wiadomość na podstawie aktualnego stanu gry */
-	if (!game_info.is_gameplay()) {
-		return {GameState::LobbyState, game_info.create_lobby_msg()};
+	if (type == ServerMessageToClientType::GameStarted) {
+		return {};
+	} else if (type == ServerMessageToClientType::Turn) {
+		reply.emplace(GameState::GameplayState, game_info.create_gameplay_msg());
+	} else {
+		reply.emplace(GameState::LobbyState, game_info.create_lobby_msg());
 	}
-	return {GameState::GameplayState, game_info.create_gameplay_msg()};
-}
-
-bool Client::should_notify_display(ServerMessageToClient &message) {
-	return (message.type == AcceptedPlayer && !game_info.is_gameplay())
-	       || (message.type == Turn && game_info.is_gameplay());
+	return reply;
 }
 
 void Client::do_receive_from_server() {
@@ -198,7 +194,8 @@ void Client::do_handle_server(const boost::system::error_code &ec) {
 			do_send_gui(send.value());
 		}
 	} else {
-		std::cout << "Error: " << ec.message() << std::endl;
+		std::cout << "Error receiving from server: " << ec.message() << std::endl;
+
 		exit_program(EXIT_FAILURE);
 	}
 }

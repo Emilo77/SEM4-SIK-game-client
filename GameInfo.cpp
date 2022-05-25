@@ -61,7 +61,7 @@ void GameInfo::apply_GameStarted(struct GameStarted &message) {
 void GameInfo::apply_Turn(struct Turn &message) {
 	explosions.clear();
 	decrease_bomb_timers(); //może nie w tym miejscu
-	turn = message.turn;
+	turn = message.turn_number;
 	for (auto &event: message.events) {
 		apply_event(event);
 	}

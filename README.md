@@ -3,6 +3,16 @@
 Pytania proszę wysyłać na adres agluszak@mimuw.edu.pl.
 
 Historia zmian:
+- **25.05.2023** - Doprecyzowanie, kiedy wysyłane są komunikaty do GUI:
+  - Po Turn - Game
+  - Po AcceptedPlayer, GameEnded i Hello - Lobby
+  - Po GameStarted - nic
+
+  A wszystkie pozycje początkowe graczy i bloków są wysyłane w turze 0.
+
+- **24.05.2022** - Wycofanie poniższego (nie będziemy osobno oceniać jakości kodu po pierwszej części)
+- **23.05.2022** - Przy oddawaniu klienta pliki (lub ich części) dotyczące serwera zostaną uznane za zbędne
+- **20.05.2022** - WAŻNE: zmiana jak wysyłane są informacje o rozgrywce po dołączeniu w trakcie. Doprecyzowanie, w jaki sposób obliczany jest wybuch bomby. 
 - **18.05.2022** - nowe pytania
 - **16.05.2022** - obsługa IPv6 w GUI, doprecyzowanie jak projekt ma się budować
 - **13.05.2022** - zmiana display na gui, dodanie pytań
@@ -92,7 +102,7 @@ Serwer:
 ```
     -b, --bomb-timer <u16>
     -c, --players-count <u8>
-    -d, --turn-duration <u64, milisekundy>
+    -d, --turn_number-duration <u64, milisekundy>
     -e, --explosion-radius <u16>
     -h, --help                                   Wypisuje jak używać programu
     -k, --initial-blocks <u16>
@@ -193,7 +203,7 @@ Serwer ignoruje komunikaty `Join` wysłane w trakcie rozgrywki. Serwer ignoruje 
 ### 2.2. Komunikaty od serwera do klienta
 
 ```
-enum ServerMessageToClient {
+enum ServerMessage {
     [0] Hello {
         server_name: String,
         players_count: u8,
@@ -211,7 +221,7 @@ enum ServerMessageToClient {
             players: Map<PlayerId, Player>,
     },
     [3] Turn {
-            turn: u16,
+            turn_number: u16,
             events: List<Event>,
     },
     [4] GameEnded {
@@ -224,8 +234,8 @@ enum ServerMessageToClient {
 Wiadomość od serwera typu `Turn`
 
 ```
-ServerMessageToClient::Turn {
-        turn: 44,
+ServerMessage::Turn {
+        turn_number: 44,
         events: [
             Event::PlayerMoved {
                 id: PlayerId(3),
@@ -285,6 +295,31 @@ Pole `address` w strukturze `Player` może reprezentować zarówno adres IPv4, j
 
 Liczba typu `Score` informuje o tym, ile razy robot danego gracza został zniszczony.
 
+
+### 2.4. Generator liczb losowych
+
+Do wytwarzania wartości losowych należy użyć poniższego deterministycznego
+generatora liczb 32-bitowych. Kolejne wartości zwracane przez ten generator
+wyrażone są wzorem:
+
+    r_0 = (seed * 48271) mod 2147483647
+    r_i = (r_{i-1} * 48271) mod 2147483647
+
+
+gdzie wartość `seed` jest 32-bitowa i jest przekazywana do serwera za pomocą
+parametru `-s`. Jeśli ten parametr nie jest zdefiniowany, można jako wartości 
+domyślnej użyć dowolnej liczby, która będzie zmieniać się przy każdym uruchomieniu, np. 
+`unsigned seed = time(NULL)` (C) 
+lub `unsigned seed = std::chrono::system_clock::now().time_since_epoch().count()` (C++).
+
+Powyższy generator odpowiada generatorowi `std::minstd_rand`.
+
+Należy użyć dokładnie takiego generatora, żeby umożliwić automatyczne testowanie
+rozwiązania (uwaga na konieczność wykonywania pośrednich obliczeń na typie
+64-bitowym).
+
+Przykłady użycia generatora zostały podane w plikach `c/random.c` oraz `cpp/random.cpp`.
+
 ### 2.5. Stan gry
 
 Serwer jest „zarządcą” stanu gry, do klientów przesyła informacje o zdarzeniach. Klienci je agregują
@@ -298,7 +333,7 @@ Serwer powinien przechowywać następujące informacje:
 Oraz tylko w przypadku toczącej się rozgrywki:
 
 - numer tury
-- lista wszystkich zdarzeń od początku rozgrywki
+- lista wszystkich tur od początku rozgrywki
 - pozycje graczy
 - liczba śmierci każdego gracza
 - informacje o istniejących bombach (pozycja, czas)
@@ -317,7 +352,7 @@ Po podłączeniu klienta do serwera serwer wysyła do niego komunikat `Hello`.
 Jeśli rozgrywka jeszcze nie została rozpoczęta,
 serwer wysyła komunikaty `AcceptedPlayer` z informacją o podłączonych graczach.
 Jeśli rozgrywka już została rozpoczęta, serwer wysyła komunikat `GameStarted` z informacją o rozpoczęciu rozgrywki,
-a następnie wysyła komunikat `Turn` z informacją o aktualnym stanie gry. Numer tury w takim komunikacie to 0.
+a następnie wysyła wszystkie dotychczasowe komunikaty `Turn`.
 
 Jeśli rozgrywka nie jest jeszcze rozpoczęta, to wysłanie przez klienta komunikatu `Join`
 powoduje dodanie go do listy graczy. Serwer następnie rozsyła do wszystkich klientów komunikat `AcceptedPlayer`.
@@ -375,12 +410,10 @@ zdarzenia = []
 dla każdej bomby:
     zmniejsz jej licznik czasu o 1
     jeśli licznik wynosi 0:
-        zaznacz, że bomba będzie eksplodować
-    
-dla każdej eksplodującej bomby:
-    oblicz, które bloki znikną w wyniku eksplozji
-    oblicz, które roboty zostaną zniszczone w wyniku eksplozji
-    dodaj zdarzenie `BombExploded` do listy
+        zaznacz, które bloki znikną w wyniku eksplozji
+        zaznacz, które roboty zostaną zniszczone w wyniku eksplozji
+        dodaj zdarzenie `BombExploded` do listy
+        usuń bombę    
     
 dla każdego gracza w kolejności id:
     jeśli robot nie został zniszczony:
@@ -496,7 +529,7 @@ enum DrawMessage {
         size_x: u16,
         size_y: u16,
         game_length: u16,
-        turn: u16,
+        turn_number: u16,
         players: Map<PlayerId, Player>,
         player_positions: Map<PlayerId, Position>,
         blocks: List<Position>,
@@ -506,6 +539,8 @@ enum DrawMessage {
     },
 }
 ```
+
+Explosions w komunikacie `Game` to lista pozycji, na których robot by zginął, gdyby tam stał.
 
 Klient powinien wysłać taki komunikat po każdej zmianie stanu (tzn. otrzymaniu wiadomości `Turn` jeśli rozgrywka jest w
 toku lub `AcceptedPlayer` jeśli rozgrywka się nie toczy).
@@ -606,11 +641,11 @@ Testy będą obejmowały m.in.:
 - komentarze powinny być w jednym języku
 - „magiczne stałe” powinny być ponazywane
 - [„Parse, don’t validate”](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/)
-
+- jeśli kod napisany jest w C++, to należy przestrzegać konwencji programowania w tym języku
 
 ## 7. FAQ
 
-- P: Klient może wysłać do serwera bardzo dużo ruchów (bo np. gracz wciska szybko różne strzałki), zatem nawet jak na bieżąco odczytujemy dane z socketu, to po upływie tych turn-duration milisekund, w sockecie wciąż mogą zalegać ruchy. Czy przechodzą one na następną turę? Dla przykładu, robię ruchy LPDLLPDGGLPDG, więc też takie trafią do socketu po stronie serwera, i przed upływem turn-duration ms, serwer przetworzył LPDL, więc przyjmuejmy, że w tej turze gracz robi ruch L. Czy pozostałe ruchy zalegające w sockecie (LPDGGLPDG) przechodzą na następną turę?
+- P: Klient może wysłać do serwera bardzo dużo ruchów (bo np. gracz wciska szybko różne strzałki), zatem nawet jak na bieżąco odczytujemy dane z socketu, to po upływie tych turn_number-duration milisekund, w sockecie wciąż mogą zalegać ruchy. Czy przechodzą one na następną turę? Dla przykładu, robię ruchy LPDLLPDGGLPDG, więc też takie trafią do socketu po stronie serwera, i przed upływem turn_number-duration ms, serwer przetworzył LPDL, więc przyjmuejmy, że w tej turze gracz robi ruch L. Czy pozostałe ruchy zalegające w sockecie (LPDGGLPDG) przechodzą na następną turę?
 - O: Możemy założyć, że zależy to od implementującego, bo testy automatyczne będziemy uruchamiać z dostatecznie długimi turami (rzędu 1s), żeby to się na pewno nie zdarzyło
 - P: Jak rozumiem, gra się zaczyna po tym jak serwer dostanie players-count komunikatów Join. Co jeśli przyjdzie więcej komunikatów Join? Mamy je zignorować?
 - O: Tak, serwer ignoruje komunikaty Join w momencie, gdy rozgrywka jest w trakcie
@@ -641,7 +676,7 @@ Testy będą obejmowały m.in.:
 - P: Czy jeśli w trakcie tury klient wyśle wiele komunikatów i część z nich jest poprawna, część nie, ale ostatni jest niepoprawny (wykonuje niedozwolony ruch), to serwer ma wziąć pod uwagę ostatni poprawny ruch wysłany w tej turze, czy zignorować wszystkie, bo ostatni wysłany był niepoprawny?
 - O: Wysłanie komunikatu niepoprawnego składniowo powoduje rozłączenie klienta. Komunikat poprawny składniowo, ale niemający sensu (np. join w czasie gry) jest ignorowany. Komunikat sensowny może oznaczać chęć wykonania niedozwolonego ruchu (wyjścia poza planszę, wejścia na blok, zablokowania zablokowanego pola), ale nie zmienia to faktu, że jest sensowny. W czasie gry liczy się ostatni nadesłany sensowny komunikat, niezależnie od tego, czy spowoduje poprawny ruch czy nie.
 - P: Czy możemy być pewni, że wiadomość od GUI przyszła z podanego adresu i wiadomości do GUI są wysyłane z podanego portu?
-Innymi słowy, czy wiadomości od GUI mamy odbierać przez receive_server_message, czy receive_from (i analogicznie wysyłać przez send, czy send_to)?
+Innymi słowy, czy wiadomości od GUI mamy odbierać przez receive, czy receive_from (i analogicznie wysyłać przez send, czy send_to)?
 - O: Adres i port GUI, które podaje się w kliencie, służą do wysyłania wiadomości od klienta do GUI. GUI może wysyłać komunikaty z portów efemerycznych. Ale ogólnie najlepiej nic nie zakładać o adresie GUI i być gotowym na odbieranie (poprawnych) wiadomości od kogokolwiek
 - P: Czy możemy założyć, że rozmiar planszy będzie zawierał się w praktycznych wymiarach? Plansza o maksymalnych wymiarach ma kilka miliardów pół co z punktu widzenia gry jest zupełnie niepraktyczne, a utrudnia implementacje logiki gry, gdy musimy założyć, że powinna działać dla takich wymiarów. Ujmując problem inaczej: czy możemy założyć, że deklaracja `T board[size_x][size_y]`, gdzie T jest typem o rozsądnej wielkości będzie poprawna?
 - O: Nie wydaje mi się, żeby tworzenie takiej tablicy dwuwymiarowej było do czegokolwiek potrzebne.
@@ -649,7 +684,7 @@ Innymi słowy, czy wiadomości od GUI mamy odbierać przez receive_server_messag
   a) dostaje komunikat Hello, Game Started, a później kolejne tury (tak jak gracze)
   b) komunikat Hello, później kolejne Tury (jak gracze)
   c) komunikat Hello, Game Started i tury numerowane od 0?
-- O: Hello, Game Started, turę 0 zawierającą wszystkie zdarzenia do tej pory i potem już normalnie
+- O: a)
 - P: Czy klient-obserwator może wysyłać jakieś komunikaty w trakcie gry? 
 - O: Może, ale będą ignorowane
 - P: Komunikat Game do GUI w polu explosions powinien przekazywać tylko wybuchy z poprzedniej tury, tak? Czyli odebranie komunikatu bomb exploded między innymi dla klienta oznacza "zapomnienie" o danej bombie i wrzucenie jej pozycji do explosions?
@@ -659,7 +694,7 @@ Innymi słowy, czy wiadomości od GUI mamy odbierać przez receive_server_messag
 - P: Mam mały problem z gui - roboty się w nim nie wyświetlają. Przesyłam przykład, plansza na której powinien być tylko robot.
   Ostatnia wiadomość otrzymana przez gui:
  ```
- 2022-05-12T14:04:23.246721Z INFO gui: {"Game":{"server_name":"zabawownia","size_x":10,"size_y":10,"game_length":1000,"turn":10,"players":{"0":{"name":"michal","socket_addr":"127.0.0.1:42704"}},"player_positions":{"0":[3,3]},"blocks":[],"bombs":[],"explosions":[],"scores":{}}}
+ 2022-05-12T14:04:23.246721Z INFO gui: {"Game":{"server_name":"zabawownia","size_x":10,"size_y":10,"game_length":1000,"turn_number":10,"players":{"0":{"name":"michal","socket_addr":"127.0.0.1:42704"}},"player_positions":{"0":[3,3]},"blocks":[],"bombs":[],"explosions":[],"scores":{}}}
  ```
  - O: W scores musi być player.
  - P: Czy klient może połączyć się z serwerem zanim otrzyma wiadomość od gui?
@@ -680,4 +715,3 @@ Innymi słowy, czy wiadomości od GUI mamy odbierać przez receive_server_messag
  - O: Może, ale zostaną zignorowane (chodzi o to, że mogą np. dojść z opóźnieniem z ostatniej tury, kiedy serwer wróci już do stanu lobby)
  - P: Jak klient ma postępować z bombami które zostały mu przesłane, ale nie wybuchły, mimo tego, że ich timer spadł poniżej zera?
  - O: UB
- 

@@ -19,7 +19,7 @@ using boost::asio::ip::udp;
 /* Obsługa sygnałów */
 static void handler(const boost::system::error_code &error, int signal_number) {
 	if (error) {
-		std::cerr << "Error: " << error.message() << std::endl;
+		std::cerr << "Error while handling signal: " << error.message() << std::endl;
 		exit(EXIT_FAILURE);
 	}
 	std::cout << "Signal " << signal_number << " received." << std::endl;
@@ -78,11 +78,9 @@ private:
 	/* Obsługa wiadomości */
 	std::optional<size_t> handle_message_from_server();
 
-	/* Sprawdzenie, czy klient powinien wysyłać wiadomość do GUI */
-	bool should_notify_display(ServerMessageToClient &message);
-
 	/* Przygotowanie wiadomości do wysłania */
-	ClientMessageToDisplay prepare_msg_to_display();
+	std::optional<ClientMessageToDisplay>
+	prepare_msg_to_display(ServerMessageToClientType type);
 
 	/* Wysłanie wiadomości do gui */
 	void do_send_gui(size_t send_length);
@@ -95,6 +93,7 @@ private:
 	boost::asio::io_context io_context;
 	std::optional<udp::socket> gui_socket;
 	std::optional<tcp::socket> server_socket;
+	boost::asio::signal_set signals{io_context, SIGINT};
 };
 
 

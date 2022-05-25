@@ -1,10 +1,10 @@
 #include "Buffer.h"
 
-static bool invalid_direction(uint8_t direction) {return direction > 3;}
+static bool invalid_direction(uint8_t direction) { return direction > 3; }
 
-static bool invalid_server_message_type(uint8_t type) {return type > 4;}
+static bool invalid_server_message_type(uint8_t type) { return type > 4; }
 
-static bool invalid_display_message_type(uint8_t type) {return type > 2;}
+static bool invalid_display_message_type(uint8_t type) { return type > 2; }
 
 uint8_t Buffer::convert_to_send(uint8_t number) { return number; }
 
@@ -142,42 +142,53 @@ void Buffer::receive(Player &player) {
 	receive(player.address);
 }
 
-void Buffer::receive_event_content(struct BombPlaced &data) {
-	receive(data.bomb_id);
-	receive(data.position);
+struct BombPlaced Buffer::receive_bomb_placed() {
+	struct BombPlaced event_content;
+	receive(event_content.bomb_id);
+	receive(event_content.position);
+	return event_content;
 }
 
-void Buffer::receive_event_content(struct BombExploded &data) {
-	receive(data.bomb_id);
-	receive_list_player_ids(data.robots_destroyed);
-	receive_list_positions(data.blocks_destroyed);
+struct BombExploded Buffer::receive_bomb_exploded() {
+	struct BombExploded event_content;
+	receive(event_content.bomb_id);
+	receive_list_player_ids(event_content.robots_destroyed);
+	receive_list_positions(event_content.blocks_destroyed);
+	return event_content;
 }
 
-void Buffer::receive_event_content(struct PlayerMoved &data) {
-	receive(data.player_id);
-	receive(data.position);
+struct PlayerMoved Buffer::receive_player_moved() {
+	struct PlayerMoved event_content;
+	receive(event_content.player_id);
+	receive(event_content.position);
+	return event_content;
 }
 
-void Buffer::receive_event_content(struct BlockPlaced &data) {
-	receive(data.position);
+struct BlockPlaced Buffer::receive_block_placed() {
+	struct BlockPlaced event_content;
+	receive(event_content.position);
+	return event_content;
 }
 
 void Buffer::receive_event(EventType type, Event &event) {
 	event.type = type;
+	std::variant<struct BombPlaced, struct BombExploded,
+			struct PlayerMoved, struct BlockPlaced> data;
 	switch (type) {
 		case BombPlaced:
-			receive_event_content(std::get<struct BombPlaced>(event.data));
+			data = receive_bomb_placed();
 			break;
 		case BombExploded:
-			receive_event_content(std::get<struct BombExploded>(event.data));
+			data = receive_bomb_exploded();
 			break;
 		case PlayerMoved:
-			receive_event_content(std::get<struct PlayerMoved>(event.data));
+			data = receive_player_moved();
 			break;
 		case BlockPlaced:
-			receive_event_content(std::get<struct BlockPlaced>(event.data));
+			data = receive_block_placed();
 			break;
 	}
+	event.data = data;
 }
 
 void Buffer::receive_list_events(std::vector<Event> &vector) {
@@ -258,37 +269,42 @@ void Buffer::insert_move(Direction direction) {
 	insert((uint8_t) direction);
 }
 
-void Buffer::receive_hello(struct Hello &message) {
-	receive(message.server_name);
-	receive(message.players_count);
-	receive(message.size_x);
-	receive(message.size_y);
-	receive(message.game_length);
-	receive(message.explosion_radius);
-	receive(message.bomb_timer);
-
+struct Hello Buffer::receive_hello() {
+	struct Hello hello;
+	receive(hello.server_name);
+	receive(hello.players_count);
+	receive(hello.size_x);
+	receive(hello.size_y);
+	receive(hello.game_length);
+	receive(hello.explosion_radius);
+	receive(hello.bomb_timer);
+	return hello;
 }
 
-void Buffer::receive_accepted_player(struct AcceptedPlayer &message) {
-	receive(message.player_id);
-	receive(message.player);
-
+struct AcceptedPlayer Buffer::receive_accepted_player() {
+	struct AcceptedPlayer accepted_player;
+	receive(accepted_player.player_id);
+	receive(accepted_player.player);
+	return accepted_player;
 }
 
-void Buffer::receive_game_started(struct GameStarted &message) {
-	receive_map_players(message.players);
-
+struct GameStarted Buffer::receive_game_started() {
+	struct GameStarted game_started;
+	receive_map_players(game_started.players);
+	return game_started;
 }
 
-void Buffer::receive_turn(struct Turn &message) {
-	receive(message.turn);
-	receive_list_events(message.events);
-
+struct Turn Buffer::receive_turn() {
+	struct Turn turn;
+	receive(turn.turn_number);
+	receive_list_events(turn.events);
+	return turn;
 }
 
-void Buffer::receive_game_ended(struct GameEnded &message) {
-	receive_map_scores(message.scores);
-
+struct GameEnded Buffer::receive_game_ended() {
+	struct GameEnded game_ended;
+	receive_map_scores(game_ended.scores);
+	return game_ended;
 }
 
 void Buffer::send_lobby(Lobby &message) {
@@ -339,37 +355,39 @@ size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 }
 
 std::optional<ServerMessageToClient>
-Buffer::receive_msg_from_server(size_t expected_size) {
-	auto serverMessage = std::optional<ServerMessageToClient>();
+Buffer::receive_msg_from_server() {
 	reset_read_index();
+	auto serverMessage = std::optional<ServerMessageToClient>();
 	uint8_t message;
 	receive(message);
 	if (invalid_server_message_type(message)) {
 		return {};
 	}
+	std::variant<struct Hello, struct AcceptedPlayer,
+			struct GameStarted, struct Turn, struct GameEnded> data;
 	switch ((ServerMessageToClientType) message) {
 		case Hello:
-			receive_hello(std::get<struct Hello>(serverMessage->data));
+			data = receive_hello();
+			serverMessage.emplace(ServerMessageToClientType::Hello, data);
 			break;
 		case AcceptedPlayer:
-			receive_accepted_player(
-					std::get<struct AcceptedPlayer>(serverMessage->data));
+			data = receive_accepted_player();
+			serverMessage.emplace(ServerMessageToClientType::AcceptedPlayer,
+			                      data);
 			break;
 		case GameStarted:
-			receive_game_started(
-					std::get<struct GameStarted>(serverMessage->data));
+			data = receive_game_started();
+			serverMessage.emplace(ServerMessageToClientType::GameStarted, data);
 			break;
 		case Turn:
-			receive_turn(std::get<struct Turn>(serverMessage->data));
+			data = receive_turn();
+			serverMessage.emplace(ServerMessageToClientType::Turn, data);
 			break;
 		case GameEnded:
-			receive_game_ended(std::get<struct GameEnded>(serverMessage->data));
+			data = receive_game_ended();
+			serverMessage.emplace(ServerMessageToClientType::GameEnded, data);
 			break;
 	}
-	if (get_read_size() != expected_size) {
-		return {}; //może niepotrzebne, wtedy zakomentowaC
-	}
-	serverMessage->type = (ServerMessageToClientType) message;
 	return serverMessage;
 }
 
@@ -383,7 +401,7 @@ size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {
 			send_game(std::get<GamePlay>(drawMessage.data));
 			break;
 	}
-	return 0;
+	return get_send_size();
 }
 
 std::optional<DisplayMessageToClient>

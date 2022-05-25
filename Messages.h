@@ -1,6 +1,7 @@
 #ifndef ZADANIE02_CLIENT_MESSAGES_H
 #define ZADANIE02_CLIENT_MESSAGES_H
 
+#include <utility>
 #include <variant>
 #include <string>
 #include <cstdint>
@@ -50,7 +51,7 @@ struct GameStarted {
 };
 
 struct Turn {
-	uint16_t turn;
+	uint16_t turn_number;
 	std::vector<Event> events;
 };
 
@@ -122,6 +123,30 @@ typedef struct ServerMessageToClient {
 	std::variant<struct Hello, struct AcceptedPlayer,
 			struct GameStarted, struct Turn, struct GameEnded>
 			data;
+
+	ServerMessageToClient(ServerMessageToClientType type,
+						  std::variant<struct Hello, struct AcceptedPlayer,
+									  struct GameStarted, struct Turn, struct GameEnded>
+									  data) : type(type), data(std::move(data)) {}
+
+//	ServerMessageToClient(ServerMessageToClientType type, struct Hello &data)
+//			: type(type), data(data) {}
+//
+//	ServerMessageToClient(ServerMessageToClientType type,
+//	                      struct AcceptedPlayer &data)
+//			: type(type), data(data) {}
+//
+//	ServerMessageToClient(ServerMessageToClientType type,
+//	                      struct GameStarted &data)
+//			: type(type), data(data) {}
+//
+//	ServerMessageToClient(ServerMessageToClientType type, struct Turn &data)
+//			: type(type), data(data) {}
+//
+//	ServerMessageToClient(ServerMessageToClientType type,
+//	                      struct GameEnded &data)
+//			: type(type), data(data) {}
+
 } ServerMessageToClient;
 
 typedef struct DisplayMessageToClient {
@@ -138,6 +163,10 @@ typedef struct ClientMessageToServer {
 typedef struct ClientMessageToDisplay {
 	GameState state;
 	std::variant<struct Lobby, struct GamePlay> data;
+
+	ClientMessageToDisplay(GameState state,
+	                       std::variant<struct Lobby, struct GamePlay> data)
+			: state(state), data(std::move(data)) {}
 } ClientMessageToDisplay;
 
 
