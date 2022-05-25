@@ -1,81 +1,101 @@
 #ifndef ZADANIE02_CLIENT_H
 #define ZADANIE02_CLIENT_H
 
-#include "Handlers.h"
+#include "err.h"
+#include "GameInfo.h"
+#include "Buffer.h"
+#include "Messages.h"
+
 
 #include <iostream>
 #include <thread>
 
+#include <boost/asio.hpp>
+#include <boost/asio/signal_set.hpp>
 
-//static bool finish = false;
-//
-//static void end_program() { finish = true; }
-//
-//static void catch_int(int sig) {
-//	finish = true;
-//	fprintf(stderr, "Signal %d catched. Closing client.\n", sig);
-//}
+using boost::asio::ip::tcp;
+using boost::asio::ip::udp;
+
+/* Obsługa sygnałów */
+static void handler(const boost::system::error_code &error, int signal_number) {
+	if (error) {
+		std::cerr << "Error: " << error.message() << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	std::cout << "Signal " << signal_number << " received." << std::endl;
+	std::cerr << "handling signal " << signal_number << std::endl;
+	std::cerr << "Closing client." << signal_number << std::endl;
+	//może przed tym będzie trzeba zamknąć sockety
+	exit(EXIT_SUCCESS);
+}
 
 class Client {
 
 public:
 	explicit Client(ClientParameters &parameters) : parameters(parameters) {
-		try {
-			udp::resolver gui_resolver(io_context);
-			udp::endpoint gui_endpoints = *gui_resolver.resolve(
-					parameters.gui_host,
-					boost::lexical_cast<std::string>(parameters.gui_port));
-
-
-			tcp::resolver tcp_resolver(io_context);
-			tcp::endpoint tcp_endpoints = *tcp_resolver.resolve(
-					parameters.server_host,
-					boost::lexical_cast<std::string>(parameters.server_port));
-
-
-			udp::socket gui_socket(io_context,
-			                       udp::endpoint(udp::v6(), parameters.port));
-			tcp::socket server_socket(io_context);
-
-			server_socket.connect(tcp_endpoints);
-			gui_socket.connect(gui_endpoints);
-
-			gui_to_server_handler.emplace(
-					GuiToServerHandler(game_info, parameters, server_socket,
-					                   gui_socket));
-
-			server_to_gui_handler.emplace(
-					ServerToGuiHandler(game_info, parameters, server_socket,
-					                   gui_socket));
-
-		}
-		catch (std::exception &e) {
-			std::cerr << "Exception: " << e.what() << "\n";
-		}
-
+		initialize();
 	}
 
 	/* Uruchomienie klienta */
 	void run() {
-		if (gui_to_server_handler.has_value() && server_to_gui_handler.has_value()) {
-			gui_to_server_handler.value().run();
-//			server_to_gui_handler.value().run();
-			io_context.run();
-			std::cerr << "Client is running" << std::endl;
-		}
+		do_receive_from_gui();
+		do_receive_from_server();
+		io_context.run();
 	}
 
+
 private:
+	void initialize();
+
+	void exit_program(int status);
+
+/* Funkcje do połączenia GUI -> CLIENT -> SERVER */
+
+	/* Odebranie wiadomości od gui */
+	void do_receive_from_gui();
+
+	/* Obsługa wiadomości */
+	void do_handle_gui(const boost::system::error_code &ec);
+
+	/* Obsługa wiadomości */
+	std::optional<size_t> handle_gui_message();
+
+	/* Przygotowanie wiadomości do wysłania */
+	ClientMessageToServer
+	prepare_msg_to_server(DisplayMessageToClient &message);
+
+	/* Wysłanie wiadomości do serwera */
+	void do_send_server(size_t send_length);
+
+/* Funkcje do połączenia SERVER -> CLIENT -> GUI */
+
+	/* Odebranie wiadomości od serwera */
+	void do_receive_from_server();
+
+	/* Obsługa wiadomości */
+	void do_handle_server(const boost::system::error_code &ec);
+
+	/* Obsługa wiadomości */
+	std::optional<size_t> handle_message_from_server();
+
+	/* Sprawdzenie, czy klient powinien wysyłać wiadomość do GUI */
+	bool should_notify_display(ServerMessageToClient &message);
+
+	/* Przygotowanie wiadomości do wysłania */
+	ClientMessageToDisplay prepare_msg_to_display();
+
+	/* Wysłanie wiadomości do gui */
+	void do_send_gui(size_t send_length);
+
+private:
+	size_t received_length{0};
 	ClientParameters parameters;
 	GameInfo game_info;
+	Buffer buffer;
 	boost::asio::io_context io_context;
-	std::optional<ServerToGuiHandler> server_to_gui_handler;
-	std::optional<GuiToServerHandler> gui_to_server_handler;
-
-	bool finish{false};
+	std::optional<udp::socket> gui_socket;
+	std::optional<tcp::socket> server_socket;
 };
-
-
 
 
 #endif //ZADANIE02_CLIENT_H
