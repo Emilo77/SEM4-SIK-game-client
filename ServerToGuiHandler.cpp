@@ -51,23 +51,22 @@ void ServerToGuiHandler::do_handle(const boost::system::error_code &ec) {
 		}
 	} else {
 //		end_program();
-		std:: cout << "Error: " << ec.message() << std::endl;
+		std::cout << "Error: " << ec.message() << std::endl;
 		exit(1);
 	}
 }
 
 void ServerToGuiHandler::do_send(size_t send_length) {
-	gui_socket.async_send_to(boost::asio::buffer(buffer.get(), send_length),
-	                         gui_endpoint,
-	                         [this](boost::system::error_code ec,
-	                                std::size_t length) {
-		                         if (!ec) {
-			                         do_receive();
+	gui_socket.async_send(boost::asio::buffer(buffer.get(), send_length),
+	                      [this](boost::system::error_code ec,
+	                             std::size_t length) {
+		                      if (!ec) {
+			                      do_receive();
 
-		                         } else {
-			                         gui_socket.close();
-			                         std::cerr << "Error: " << ec.message()
-			                                   << std::endl;
-		                         }
-	                         });
+		                      } else {
+			                      gui_socket.close();
+			                      std::cerr << "Error: " << ec.message()
+			                                << std::endl;
+		                      }
+	                      });
 }

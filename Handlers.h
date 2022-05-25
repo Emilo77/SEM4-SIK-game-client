@@ -29,14 +29,11 @@ class GuiToServerHandler {
 public:
 	GuiToServerHandler(GameInfo &game_info, ClientParameters &parameters,
 	                   tcp::socket &server_socket,
-	                   udp::socket &gui_socket,
-	                   udp::endpoint &gui_endpoint)
-			:
-			game_info(game_info),
-			parameters(parameters),
-			server_socket(server_socket),
-			gui_socket(gui_socket),
-			gui_endpoint(gui_endpoint) {}
+	                   udp::socket &gui_socket)
+			: game_info(game_info),
+			  parameters(parameters),
+			  server_socket(server_socket),
+			  gui_socket(gui_socket) {}
 
 	/* Rozpoczęcie działania */
 	void run() {
@@ -68,7 +65,6 @@ private:
 	Buffer buffer;
 	tcp::socket &server_socket;
 	udp::socket &gui_socket;
-	udp::endpoint &gui_endpoint;
 };
 
 /* Klasa obsługująca połączenie SERWER -> CLIENT -> GUI */
@@ -77,14 +73,12 @@ class ServerToGuiHandler {
 public:
 	ServerToGuiHandler(GameInfo &game_info, ClientParameters &parameters,
 	                   tcp::socket &server_socket,
-	                   udp::socket &gui_socket,
-	                   udp::endpoint &gui_endpoint)
+	                   udp::socket &gui_socket)
 			:
 			game_info(game_info),
 			parameters(parameters),
 			server_socket(server_socket),
-			gui_socket(gui_socket),
-			gui_endpoint(gui_endpoint) {}
+			gui_socket(gui_socket) {}
 
 	/* Rozpoczęcie działania */
 	void run() {
@@ -117,8 +111,6 @@ private:
 	Buffer buffer;
 	tcp::socket &server_socket;
 	udp::socket &gui_socket;
-	udp::endpoint &gui_endpoint;
-
 };
 
 #endif //ZADANIE02_CLIENT_HANDLERS_H

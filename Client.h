@@ -23,36 +23,30 @@ public:
 		try {
 			udp::resolver gui_resolver(io_context);
 			udp::endpoint gui_endpoints = *gui_resolver.resolve(
-					parameters.gui_address,
+					parameters.gui_host,
 					boost::lexical_cast<std::string>(parameters.gui_port));
 
 
 			tcp::resolver tcp_resolver(io_context);
 			tcp::endpoint tcp_endpoints = *tcp_resolver.resolve(
-					parameters.server_address,
+					parameters.server_host,
 					boost::lexical_cast<std::string>(parameters.server_port));
 
 
-			udp::socket gui_send_scocket(io_context);
-			udp::socket gui_recv_socket(io_context,
-			                            udp::endpoint(udp::v6(), parameters.port));
-
+			udp::socket gui_socket(io_context,
+			                       udp::endpoint(udp::v6(), parameters.port));
 			tcp::socket server_socket(io_context);
 
-			gui_recv_socket.open(udp::v6());
-			gui_recv_socket.bind(udp::endpoint(udp::v6(), parameters.port));
-
-			gui_send_scocket.open(udp::v6());
-
 			server_socket.connect(tcp_endpoints);
+			gui_socket.connect(gui_endpoints);
 
 			gui_to_server_handler.emplace(
 					GuiToServerHandler(game_info, parameters, server_socket,
-					                   gui_recv_socket, gui_endpoints));
+					                   gui_socket));
 
 			server_to_gui_handler.emplace(
 					ServerToGuiHandler(game_info, parameters, server_socket,
-					                   gui_send_scocket, gui_endpoints));
+					                   gui_socket));
 
 		}
 		catch (std::exception &e) {
@@ -65,7 +59,7 @@ public:
 	void run() {
 		if (gui_to_server_handler.has_value() && server_to_gui_handler.has_value()) {
 			gui_to_server_handler.value().run();
-			server_to_gui_handler.value().run();
+//			server_to_gui_handler.value().run();
 			io_context.run();
 			std::cerr << "Client is running" << std::endl;
 		}
