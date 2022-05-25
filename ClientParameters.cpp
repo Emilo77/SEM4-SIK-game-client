@@ -3,13 +3,14 @@
 
 namespace po = boost::program_options;
 
-// A helper function to simplify the main part.
+/* Pomocnicza funkcja do uproszczenia działania biblioteki Boost */
 template<class T>
 std::ostream &operator<<(std::ostream &os, const std::vector<T> &v) {
 	copy(v.begin(), v.end(), ostream_iterator<T>(os, " "));
 	return os;
 }
 
+/* Zakończenie programu w przypadku podania błędnych parametrów */
 void exit_program(int status) {
 	if (status) {
 		std::cerr << "Consider using -h [--help] option" << std::endl;
@@ -17,6 +18,7 @@ void exit_program(int status) {
 	exit(status);
 }
 
+/* Podział adresu ip na host i port */
 void split_ip(std::string &address, std::string &host, std::string &port) {
 	size_t pos = address.find_last_of(':');
 	if (pos == std::string::npos) {
@@ -27,7 +29,7 @@ void split_ip(std::string &address, std::string &host, std::string &port) {
 	}
 }
 
-
+/* Sprawdzenie, czy port mieści się w dozwolonym przedziale */
 static inline void check_port(int possible_port) {
 	if (possible_port < 0 || possible_port > 65535) {
 		throw po::validation_error(po::validation_error::invalid_option_value,
@@ -35,6 +37,7 @@ static inline void check_port(int possible_port) {
 	}
 }
 
+/* Sprawdzenie, czy port da się poprawnie konwertować z napisu do liczby */
 static inline void check_port_str(std::string &port_str) {
 	try {
 		boost::numeric_cast<uint16_t>(boost::lexical_cast<int>(port_str));
@@ -49,14 +52,13 @@ static inline void check_port_str(std::string &port_str) {
 	}
 }
 
+/* Częściowe sprawdzenie poprawności adresu ip */
 static inline void check_address(std::string ip) {
 	std::string host, port;
 	split_ip(ip, host, port);
-//	check_host(host);
 	check_port_str(port);
 }
 
-//porównywanie adresów ip
 void ClientParameters::compare_address() const {
 	if (gui_address == server_address) {
 		throw po::validation_error(po::validation_error::invalid_option_value,
@@ -64,7 +66,7 @@ void ClientParameters::compare_address() const {
 	}
 }
 
-//może zmienić parsowanie portu jako string
+
 void ClientParameters::check_parameters() {
 	int possible_port = -1;
 	const po::positional_options_description p; // empty positional options
@@ -96,6 +98,8 @@ void ClientParameters::check_parameters() {
 				positional(p).
 				run(), vm);
 
+		/* Jeżeli wystąpi opcja help, ignorujemy inne parametry
+		 * i kończymy działanie programu */
 		if (vm.count("help")) {
 			std::cout << "Program Usage: ./" << argv[0] << "\n" << desc << "\n";
 			exit_program(0);

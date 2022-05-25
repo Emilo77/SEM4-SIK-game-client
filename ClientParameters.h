@@ -12,8 +12,10 @@ private:
 	int argc{0};
 	char **argv;
 
+	/* Sprawdzenie, czy serwer i gui posiadają ten sam adres ip */
 	void compare_address() const;
 
+	/* Sprawdzenie ogólne parametrów */
 	void check_parameters();
 
 	void print_parameters() const { //usunąć później

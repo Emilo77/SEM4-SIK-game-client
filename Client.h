@@ -33,44 +33,55 @@ public:
 					boost::lexical_cast<std::string>(parameters.server_port));
 
 
-			udp::socket gui_sender(io_context);
-			udp::socket gui_receiver(io_context,
-			                         udp::endpoint(udp::v6(), parameters.port));
+			udp::socket gui_send_scocket(io_context);
+			udp::socket gui_recv_socket(io_context,
+			                            udp::endpoint(udp::v6(), parameters.port));
 
-			tcp::socket server_receiver(io_context);
+			tcp::socket server_socket(io_context);
 
-			gui_receiver.open(udp::v6());
-			gui_receiver.bind(udp::endpoint(udp::v6(), parameters.port));
+			gui_recv_socket.open(udp::v6());
+			gui_recv_socket.bind(udp::endpoint(udp::v6(), parameters.port));
 
-			gui_sender.open(udp::v6());
+			gui_send_scocket.open(udp::v6());
 
-			server_receiver.connect(tcp_endpoints);
+			server_socket.connect(tcp_endpoints);
+
+			gui_to_server_handler.emplace(
+					GuiToServerHandler(game_info, parameters, server_socket,
+					                   gui_recv_socket, gui_endpoints));
+
+			server_to_gui_handler.emplace(
+					ServerToGuiHandler(game_info, parameters, server_socket,
+					                   gui_send_scocket, gui_endpoints));
 
 		}
 		catch (std::exception &e) {
 			std::cerr << "Exception: " << e.what() << "\n";
 		}
+
 	}
 
-	void run();
+	/* Uruchomienie klienta */
+	void run() {
+		if (gui_to_server_handler.has_value() && server_to_gui_handler.has_value()) {
+			gui_to_server_handler.value().run();
+			server_to_gui_handler.value().run();
+			io_context.run();
+			std::cerr << "Client is running" << std::endl;
+		}
+	}
 
 private:
-	void initialize() {
-
-
-		gui_sender
-
-	}
-
-
 	ClientParameters parameters;
 	GameInfo game_info;
 	boost::asio::io_context io_context;
-
-
+	std::optional<ServerToGuiHandler> server_to_gui_handler;
+	std::optional<GuiToServerHandler> gui_to_server_handler;
 
 	bool finish{false};
 };
+
+
 
 
 #endif //ZADANIE02_CLIENT_H

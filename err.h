@@ -1,33 +1,11 @@
 #ifndef MIMUW_SIK_ERR_H
 #define MIMUW_SIK_ERR_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <stdbool.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstdarg>
+#include <cerrno>
 
-// Evaluate `x`: if non-zero, describe it as a standard error code and exit with an error.
-#define CHECK(x)                                                          \
-    do {                                                                  \
-        int err = (x);                                                    \
-        if (err != 0) {                                                   \
-            fprintf(stderr, "Error: %s returned %d in %s at %s:%d\n%s\n", \
-                #x, err, __func__, __FILE__, __LINE__, strerror(err));    \
-            exit(EXIT_FAILURE);                                           \
-        }                                                                 \
-    } while (0)
-
-// Evaluate `x`: if false, print an error message and exit with an error.
-#define ENSURE(x)                                                         \
-    do {                                                                  \
-        bool result = (x);                                                \
-        if (!result) {                                                    \
-            fprintf(stderr, "Error: %s was false in %s at %s:%d\n",       \
-                #x, __func__, __FILE__, __LINE__);                        \
-            exit(EXIT_FAILURE);                                           \
-        }                                                                 \
-    } while (0)
 
 // Check if errno is non-zero, and if so, print an error message and exit with an error.
 #define PRINT_ERRNO()                                                  \

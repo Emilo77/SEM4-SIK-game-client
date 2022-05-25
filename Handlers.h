@@ -24,7 +24,7 @@ using boost::asio::ip::udp;
 //	ENSURE(sent_length == (ssize_t) length);
 //}
 
-
+/* Klasa obsługująca połączenie GUI -> CLIENT -> SERWER */
 class GuiToServerHandler {
 public:
 	GuiToServerHandler(GameInfo &game_info, ClientParameters &parameters,
@@ -38,23 +38,28 @@ public:
 			gui_socket(gui_socket),
 			gui_endpoint(gui_endpoint) {}
 
-
+	/* Rozpoczęcie działania */
 	void run() {
 		do_receive();
 	}
 
 private:
 
+	/* Odebranie wiadomości od gui */
 	void do_receive();
 
+	/* Obsługa wiadomości */
 	void do_handle(const boost::system::error_code &ec);
 
+	/* Obsługa wiadomości */
 	std::optional<size_t> hangle_gui_message();
 
+	/* Przygotowanie wiadomości do wysłania */
 	ClientMessageToServer
 	prepare_msg_to_server(DisplayMessageToClient &message);
 
-	void send_to_server(size_t send_length);
+	/* Wysłanie wiadomości do serwera */
+	void do_send(size_t send_length);
 
 private:
 	GameInfo &game_info;
@@ -66,6 +71,7 @@ private:
 	udp::endpoint &gui_endpoint;
 };
 
+/* Klasa obsługująca połączenie SERWER -> CLIENT -> GUI */
 class ServerToGuiHandler {
 
 public:
@@ -80,24 +86,28 @@ public:
 			gui_socket(gui_socket),
 			gui_endpoint(gui_endpoint) {}
 
-public:
-
+	/* Rozpoczęcie działania */
 	void run() {
 		do_receive();
 	}
 
 private:
-
+	/* Odebranie wiadomości od serwera */
 	void do_receive();
 
+	/* Obsługa wiadomości */
 	void do_handle(const boost::system::error_code &ec);
 
+	/* Obsługa wiadomości */
 	std::optional<size_t> handle_message_from_server();
 
+	/* Sprawdzenie, czy klient powinien wysyłać wiadomość do GUI */
 	bool should_notify_display(ServerMessageToClient &message);
 
+	/* Przygotowanie wiadomości do wysłania */
 	ClientMessageToDisplay prepare_msg_to_display();
 
+	/* Wysłanie wiadomości do gui */
 	void do_send(size_t send_length);
 
 

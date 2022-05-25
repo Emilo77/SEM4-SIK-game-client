@@ -54,15 +54,16 @@ void GuiToServerHandler::do_handle(const boost::system::error_code &ec) {
 	if(!ec) {
 		auto send = hangle_gui_message();
 		if (send.has_value()) {
-			send_to_server(send.value());
+			do_send(send.value());
 		}
 	} else {
-//		end_program();
+		std:: cout << "Error: " << ec.message() << std::endl;
+		exit(1);
 	}
 }
 
 
-void GuiToServerHandler::send_to_server(size_t send_length) {
+void GuiToServerHandler::do_send(size_t send_length) {
 	server_socket.async_send(boost::asio::buffer(buffer.get(), send_length),
 	                         [this](boost::system::error_code ec,
 	                                std::size_t length) {

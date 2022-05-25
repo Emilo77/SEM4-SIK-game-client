@@ -1,7 +1,7 @@
 #ifndef ZADANIE02_BUFFER_H
 #define ZADANIE02_BUFFER_H
 
-#define BUFFER_SIZE 65507
+#define BUFFER_SIZE 65535
 
 #include "ClientParameters.h"
 #include "Utils.h"
@@ -14,34 +14,34 @@ using std::string;
 
 class Buffer {
 private:
-	//CONVERTING NUMBERS TO SEND
+	/* Konwertowanie liczby przed wysłaniem wiadomości */
 	static uint8_t convert_to_send(uint8_t number);
 
 	static uint16_t convert_to_send(uint16_t number);
 
 	static uint32_t convert_to_send(uint32_t number);
 
-	//CONVERTING NUMBERS TO SEND
+	/* Konwertowanie liczby po odebraniu wiadomości */
 	static uint8_t convert_to_receive(uint8_t number);
 
 	static uint16_t convert_to_receive(uint16_t number);
 
 	static uint32_t convert_to_receive(uint32_t number);
 
-	//RAW INSERTS
+	/* Wstawianie napisu (bez jego długości) */
 	void insert_raw(const std::string &str);
 
-	//RAW RECEIVES
+	/* Odbieranie napisu */
 	void receive_raw(std::string &str, size_t str_size);
 
-	//INSERTS NUMERIC
+	/* Wstawianie typów liczbowych */
 	void insert(uint8_t number);
 
 	void insert(uint16_t number);
 
 	void insert(uint32_t number);
 
-	//INSERTS WITH TASK CONVENTION
+	/* Wstawianie obiektów do buffera zgodnie z konwencją zadania */
 	void insert(const std::string &str);
 
 	void insert(Position &position);
@@ -50,33 +50,33 @@ private:
 
 	void insert(Bomb &bomb);
 
-	//INSERTS LISTS
+	/* Wstawianie list */
 	void insert_list_positions(std::list<Position> &positions);
 
 	void insert_list_bombs(std::list<Bomb> &bombs);
 
-	//INSERTS MAPS
+	/* Wstawianie map */
 	void insert_map_players(std::map<player_id_t, Player> &players);
 
 	void insert_map_scores(std::map<player_id_t, score_t> &scores);
 
 	void insert_map_positions(std::map<player_id_t, Position> &positions);
 
-	// RECEIVES NUMERIC
+	/* Odbieranie typów liczbowych */
 	void receive(uint8_t &number);
 
 	void receive(uint16_t &number);
 
 	void receive(uint32_t &number);
 
-	// RECEIVES WITH TASK CONVENTION
+	/* Wstawianie obiektów zgodnie z konwencją zadania */
 	void receive(std::string &str);
 
 	void receive(Position &position);
 
 	void receive(Player &player);
 
-	// UTILITIES TO RECEIVE EVENT
+	/* Odbieranie eventu */
 	void receive_event_content(struct BombPlaced &data);
 
 	void receive_event_content(struct BombExploded &data);
@@ -87,19 +87,19 @@ private:
 
 	void receive_event(EventType type, Event &event);
 
-	// RECEIVES LISTS
+	/* Odbieranie list */
 	void receive_list_events(std::vector<Event> &vector);
 
 	void receive_list_player_ids(std::vector<player_id_t> &ids);
 
 	void receive_list_positions(std::vector<Position> &positions);
 
-	// RECEIVES MAPS
+	/* Odbieranie map */
 	void receive_map_players(std::map<player_id_t, Player> &players);
 
 	void receive_map_scores(std::map<player_id_t, score_t> &scores);
 
-	// SENDING TO SERVER
+	/* Wstawianie wiadomości wysyłanych do serwera */
 	void insert_join(std::string &name);
 
 	void insert_place_bomb();
@@ -108,7 +108,7 @@ private:
 
 	void insert_move(Direction direction);
 
-	// RECEIVING FROM SERVER
+	/* Odbieranie wiadomości wysyłanych od serwera */
 	void receive_hello(struct Hello &message);
 
 	void receive_accepted_player(struct AcceptedPlayer &message);
@@ -119,7 +119,7 @@ private:
 
 	void receive_game_ended(struct GameEnded &message);
 
-	// SENDING TO DISPLAY
+	/* Wstawianie wiadomości wysyłanych do gui */
 	void send_lobby(Lobby &message);
 
 	void send_game(GamePlay &message);
@@ -127,24 +127,33 @@ private:
 
 
 public:
+	/* Przywrócenie indeksu przed odbieraniem nowej wiadomości */
 	void reset_read_index() { read_index = 0; }
 
+	/* Przywrócenie indeksu przed wysyłaniem nowej wiadomości */
 	void reset_send_index() { send_index = 0; }
 
+	/* Wstawianie wiadomości wysyłanej do serwera */
 	size_t insert_msg_to_server(ClientMessageToServer &message);
 
+	/* Odbieranie wiadomości wysyłanej od serwera */
 	std::optional<ServerMessageToClient>
 	receive_msg_from_server(size_t expected_size);
 
+	/* Wstawianie wiadomości wysyłanej do gui */
 	size_t insert_msg_to_display(ClientMessageToDisplay &drawMessage);
 
+	/* Odbieranie wiadomości wysyłanej od gui */
 	std::optional<DisplayMessageToClient>
 	receive_msg_from_display(size_t expected_size);
 
+	/* Zwrócenie wielkości zapisanej wiadomości do bufora */
 	[[nodiscard]] size_t get_send_size() const { return send_index; }
 
+	/* Zwrócenie wielkości odebranej wiadomości z bufora */
 	[[nodiscard]] size_t get_read_size() const { return read_index; }
 
+	/* Wskaźnik na bufor */
 	char *get() { return buffer; }
 
 private:
