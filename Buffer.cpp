@@ -339,7 +339,6 @@ size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 			insert_move(std::get<Direction>(message.data));
 			break;
 	}
-	print(get_send_size());
 	return get_send_size();
 }
 

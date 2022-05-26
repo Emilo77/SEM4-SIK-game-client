@@ -40,12 +40,15 @@ static inline void check_port(int possible_port) {
 /* Sprawdzenie, czy port da się poprawnie konwertować z napisu do liczby */
 static inline void check_port_str(std::string &port_str) {
 	try {
+		/* Sprawdzamy, czy jest możliwa konwersja do postaci uint16_t. */
 		boost::numeric_cast<uint16_t>(boost::lexical_cast<int>(port_str));
 	} catch (boost::bad_lexical_cast &) {
+		/* W przypadku błędu łapiemy wyjątek */
 		std::cerr << "Invalid port format in ip" << std::endl;
 		throw po::validation_error(po::validation_error::invalid_option_value,
 		                           "address port");
 	} catch (boost::bad_numeric_cast &) {
+		/* W przypadku błędu łapiemy wyjątek */
 		std::cerr << "Port out of range in ip" << std::endl;
 		throw po::validation_error(po::validation_error::invalid_option_value,
 		                           "address port");
@@ -59,6 +62,7 @@ static inline void check_address(std::string ip) {
 	check_port_str(port);
 }
 
+/* Sprawdzamy, czy adres GUI i adres serwera nie są takie same. */
 void ClientParameters::compare_address() const {
 	if (gui_address == server_address) {
 		throw po::validation_error(po::validation_error::invalid_option_value,
@@ -68,8 +72,9 @@ void ClientParameters::compare_address() const {
 
 
 void ClientParameters::check_parameters() {
+	/* Na początku zapisujemy port do inta, aby móc sprawdzić jego poprawność. */
 	int possible_port = -1;
-	const po::positional_options_description p; // empty positional options
+	const po::positional_options_description p;
 	po::options_description desc(1024, 512);
 	try {
 		desc.add_options()
@@ -109,6 +114,7 @@ void ClientParameters::check_parameters() {
 
 		compare_address();
 
+		/* Dzielimy adresy na hosty i porty, zapisujemy je w parametrach. */
 		std::string server_port_str, display_port_str;
 		split_ip(server_address, server_host, server_port_str);
 		split_ip(gui_address, gui_host, display_port_str);

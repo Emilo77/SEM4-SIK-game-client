@@ -36,7 +36,7 @@ private:
 
 	void insert(uint32_t number);
 
-	/* Wstawianie obiektów do buffera zgodnie z konwencją zadania */
+	/* Wstawianie obiektów do bufora zgodnie z konwencją zadania */
 	void insert(const std::string &str);
 
 	void insert(Position &position);
@@ -150,6 +150,14 @@ public:
 
 	/* Wskaźnik na bufor */
 	char *get() { return buffer; }
+
+	void print(size_t size) {
+		std::cerr << "size: " << size << std::endl;
+		for (size_t i = 0; i < size; i++) {
+			std::cerr << (int) buffer[i] << " | ";
+		}
+		std::cerr << std::endl;
+	}
 
 private:
 	char buffer[BUFFER_SIZE]{};

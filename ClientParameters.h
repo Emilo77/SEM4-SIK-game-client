@@ -15,24 +15,8 @@ private:
 	/* Sprawdzenie, czy serwer i gui posiadają ten sam adres ip */
 	void compare_address() const;
 
-	/* Sprawdzenie ogólne parametrów */
+	/* Główna funkcja sprawdzająca poprawność parametrów. */
 	void check_parameters();
-
-	void print_parameters() const { //usunąć później
-		std::cout << "ClientParameters: " << std::endl;
-
-		std::cout << "          " << "gui_address: " << gui_address << std::endl;
-		std::cout << "          " << "server_address: " << server_address << std::endl;
-
-		std::cout << "          " << "gui_host: " << gui_host << std::endl;
-		std::cout << "          " << "server_host: " << server_host << std::endl;
-
-		std::cout << "          " << "gui_port: " << gui_port << std::endl;
-		std::cout << "          " <<"server_port: " << server_port << std::endl;
-
-		std::cout << "          " <<"port: " << port << std::endl;
-		std::cout << "          " <<"player_name: " << player_name << std::endl;
-	}
 
 public:
 	std::string gui_address;
@@ -46,7 +30,6 @@ public:
 
 	ClientParameters(int argc, char *argv[]) : argc(argc), argv(argv) {
 		check_parameters();
-		print_parameters();
 	}
 };
 

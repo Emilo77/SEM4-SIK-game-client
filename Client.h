@@ -1,14 +1,11 @@
 #ifndef ZADANIE02_CLIENT_H
 #define ZADANIE02_CLIENT_H
 
-#include "err.h"
 #include "GameInfo.h"
 #include "Buffer.h"
 #include "Messages.h"
 
-
 #include <iostream>
-
 #include <boost/asio.hpp>
 #include <boost/asio/signal_set.hpp>
 
