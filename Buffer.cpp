@@ -343,14 +343,11 @@ size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 }
 
 std::optional<ServerMessageToClient>
-Buffer::receive_msg_from_server() {
+Buffer::receive_msg_from_server(size_t received_size) {
 	reset_read_index();
 	auto serverMessage = std::optional<ServerMessageToClient>();
 	uint8_t message;
 	receive(message);
-	if (invalid_server_message_type(message)) {
-		return {};
-	}
 	std::variant<struct Hello, struct AcceptedPlayer,
 			struct GameStarted, struct Turn, struct GameEnded> data;
 	switch ((ServerMessageToClientType) message) {
@@ -376,7 +373,20 @@ Buffer::receive_msg_from_server() {
 			serverMessage.emplace(ServerMessageToClientType::GameEnded, data);
 			break;
 	}
-	return serverMessage;
+	if (get_read_size() > shift_index + received_size) {
+		std::cerr << "Wiadomość została przesłana niepełna.\n";
+		set_shift(shift_index + received_size);
+		return {};
+	} else {
+		size_t difference = get_shift() + received_size - get_read_size();
+		set_shift(difference);
+
+		memcpy(buffer, buffer + get_read_size(),difference);
+
+
+		return serverMessage;
+
+	}
 }
 
 size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {

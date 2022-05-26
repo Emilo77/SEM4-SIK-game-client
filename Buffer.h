@@ -128,12 +128,15 @@ public:
 	/* Przywrócenie indeksu przed wysyłaniem nowej wiadomości */
 	void reset_send_index() { send_index = 0; }
 
+	/* Przywrócenie indeksu przed wysyłaniem nowej wiadomości */
+	void set_shift(size_t value) { send_index = value; }
+
 	/* Wstawianie wiadomości wysyłanej do serwera */
 	size_t insert_msg_to_server(ClientMessageToServer &message);
 
 	/* Odbieranie wiadomości wysyłanej od serwera */
 	std::optional<ServerMessageToClient>
-	receive_msg_from_server();
+	receive_msg_from_server(size_t received_size);
 
 	/* Wstawianie wiadomości wysyłanej do gui */
 	size_t insert_msg_to_display(ClientMessageToDisplay &drawMessage);
@@ -147,6 +150,9 @@ public:
 
 	/* Zwrócenie wielkości odebranej wiadomości z bufora */
 	[[nodiscard]] size_t get_read_size() const { return read_index; }
+
+	/* Zwrócenie wielkości odebranej wiadomości z bufora */
+	[[nodiscard]] size_t get_shift() const { return shift_index; }
 
 	/* Wskaźnik na bufor */
 	char *get() { return buffer; }
@@ -163,6 +169,7 @@ private:
 	char buffer[BUFFER_SIZE]{};
 	size_t send_index{0};
 	size_t read_index{0};
+	size_t shift_index{0};
 };
 
 

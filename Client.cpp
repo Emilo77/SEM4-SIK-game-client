@@ -34,6 +34,7 @@ void Client::initialize() {
 		/* Gniazdo GUI będzie nasłuchiwać na porcie podanym w parametrach */
 		gui_socket.emplace(io_context,
 		                   udp::endpoint(udp::v6(), parameters.port));
+		std:: cerr << "GUI socket listening on port " << parameters.port << std::endl;
 		server_socket.emplace(io_context);
 
 		/* Łączymy gniazda z odpowiednimi endpointami */
@@ -130,7 +131,7 @@ void Client::do_send_server(size_t send_length) {
 			boost::asio::buffer(buffer.get(), send_length),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
-				if (!ec) {
+				if (!ec && length > 0) {
 					do_receive_from_gui();
 				} else {
 					/* W przypadku błędu z połączeniem wypisujemy błąd
@@ -145,7 +146,7 @@ void Client::do_send_server(size_t send_length) {
 std::optional<size_t> Client::handle_message_from_server() {
 	if (received_length > 0) {
 		/* Wyciągamy i przetwarzamy wiadomość z bufora. */
-		auto message = buffer.receive_msg_from_server();
+		auto message = buffer.receive_msg_from_server(received_length);
 		if (message.has_value()) {
 			/* Jeżeli wiadomość jest poprawna, aktualizujemy stan gry. */
 			game_info.apply_changes_from_server(message.value());
@@ -159,16 +160,14 @@ std::optional<size_t> Client::handle_message_from_server() {
 				return buffer.insert_msg_to_display(reply.value());
 			}
 		} else {
-			/* Jeżeli wiadomość jest w niepoprawnym formacie, rozłączamy się
-			 * i kończymy działanie programu. */
-			std::cerr << "Error: received message from server is not valid.\n";
-			exit_program(EXIT_FAILURE);
+			/* Jeżeli wiadomość nie doszła cała, oczekujemy na kolejne pakiety. */
+			do_receive_from_server();
 		}
 	} else if (received_length == 0) {
 		/* Jeżeli rozmiar otrzymanej wiadomości wynosi 0, rozłączamy się
 		 * i kończymy działanie programu. */
-		std::cerr << "Connection with server closed.\n";
-		exit_program(EXIT_SUCCESS);
+		std::cerr << "Connection suddenly closed.\n";
+		exit_program(EXIT_FAILURE);
 	} else {
 		/* Jeżeli rozmiar otrzymanej wiadomości jest niepoprawny,
 		 * rozłączamy się i kończymy działanie programu. */
@@ -198,13 +197,15 @@ Client::prepare_msg_to_gui(ServerMessageToClientType type) {
 }
 
 void Client::do_receive_from_server() {
+	char temp_buffer[BUFFER_SIZE];
 	/* Odbieramy wiadomość z serwera. */
 	server_socket.value().async_receive(
-			boost::asio::buffer(buffer.get(), BUFFER_SIZE),
-			[this](boost::system::error_code ec,
+			boost::asio::buffer(temp_buffer, BUFFER_SIZE),
+			[this, &temp_buffer](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec) {
 					received_length = length;
+					memcpy(buffer.get() + buffer.get_shift(), temp_buffer, length);
 					do_handle_server();
 				} else {
 					/* W przypadku błędu z połączeniem wypisujemy błąd
@@ -235,7 +236,7 @@ void Client::do_send_gui(size_t send_length) {
 			gui_endpoints.value(),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
-				if (!ec) {
+				if (!ec && length > 0) {
 					do_receive_from_server();
 				} else {
 					/* W przypadku błędu z połączeniem wypisujemy błąd
