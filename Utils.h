@@ -99,11 +99,11 @@ enum EventType {
 };
 
 struct BombPlaced {
-	uint8_t bomb_id;
+	uint32_t bomb_id;
 	Position position;
 };
 struct BombExploded {
-	uint8_t bomb_id;
+	uint32_t bomb_id;
 	std::vector<uint8_t> robots_destroyed;
 	std::vector<Position> blocks_destroyed;
 };

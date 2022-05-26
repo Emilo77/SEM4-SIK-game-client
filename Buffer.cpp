@@ -145,7 +145,9 @@ void Buffer::receive(Player &player) {
 struct BombPlaced Buffer::receive_bomb_placed() {
 	struct BombPlaced event_content;
 	receive(event_content.bomb_id);
+	std::cerr << "received bomb_id: " << event_content.bomb_id << std::endl;
 	receive(event_content.position);
+	std::cerr << "received : bomb position" << event_content.position.x << " " << event_content.position.y << std::endl;
 	return event_content;
 }
 
@@ -154,6 +156,18 @@ struct BombExploded Buffer::receive_bomb_exploded() {
 	receive(event_content.bomb_id);
 	receive_list_player_ids(event_content.robots_destroyed);
 	receive_list_positions(event_content.blocks_destroyed);
+
+	std:: cerr << "received bomb_id: "<< event_content.bomb_id << std::endl;
+	std:: cerr << "received robots_destroyed size : "<< event_content.robots_destroyed.size() << std::endl;
+	std:: cerr << "received robots_destroyed: ";
+	for(int i : event_content.robots_destroyed) {
+		std:: cerr << i << std::endl;
+	}
+	std:: cerr << "received blocks_destroyed size : "<< event_content.blocks_destroyed.size() << std::endl;
+	for(auto i : event_content.blocks_destroyed) {
+		std:: cerr << i.x << " " << i.y << std::endl;
+	}
+
 	return event_content;
 }
 
@@ -344,6 +358,7 @@ size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 			insert_move(std::get<Direction>(message.data));
 			break;
 	}
+	print(get_send_size());
 	return get_send_size();
 }
 
@@ -412,8 +427,10 @@ Buffer::receive_msg_from_gui(size_t expected_size) {
 		if (invalid_direction(direction)) {
 			return {};
 		}
+
 		message.emplace((DisplayMessageToClientType) message_type,
-		                (Direction) direction);
+		                static_cast<Direction>(direction));
+		return message;
 	}
 
 	if (invalid_gui_message_type(message_type) ||

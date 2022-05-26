@@ -129,35 +129,19 @@ typedef struct ServerMessageToClient {
 			                      struct GameStarted, struct Turn, struct GameEnded>
 	                      data) : type(type), data(std::move(data)) {}
 
-//	ServerMessageToClient(ServerMessageToClientType type, struct Hello &data)
-//			: type(type), data(data) {}
-//
-//	ServerMessageToClient(ServerMessageToClientType type,
-//	                      struct AcceptedPlayer &data)
-//			: type(type), data(data) {}
-//
-//	ServerMessageToClient(ServerMessageToClientType type,
-//	                      struct GameStarted &data)
-//			: type(type), data(data) {}
-//
-//	ServerMessageToClient(ServerMessageToClientType type, struct Turn &data)
-//			: type(type), data(data) {}
-//
-//	ServerMessageToClient(ServerMessageToClientType type,
-//	                      struct GameEnded &data)
-//			: type(type), data(data) {}
-
 } ServerMessageToClient;
 
 typedef struct DisplayMessageToClient {
 	DisplayMessageToClientType type;
-	std::optional<Direction> direction;
+	Direction direction;
 
 	DisplayMessageToClient(DisplayMessageToClientType type, Direction direction)
-			: type(type), direction(direction) {}
+			: type(type) {
+		this->direction = direction;
+	}
 
 	explicit DisplayMessageToClient(DisplayMessageToClientType type)
-			: type(type) {}
+			: type(type), direction() {}
 } DisplayMessageToClient;
 
 typedef struct ClientMessageToServer {

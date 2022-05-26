@@ -77,6 +77,7 @@ void GameInfo::apply_GameEnded(struct GameEnded &message) {
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
 	bombs.insert({data.bomb_id, Bomb(data.bomb_id, data.position, bomb_timer)});
+	std::cerr << "Bomb placed at " << data.position.x << " " << data.position.y << std::endl;
 }
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {
