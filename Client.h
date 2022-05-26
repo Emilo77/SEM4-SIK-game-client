@@ -96,7 +96,7 @@ private:
 	std::optional<tcp::socket> server_socket;
 	std::optional<udp::endpoint> gui_endpoints;
 	std::optional<tcp::endpoint> server_endpoints;
-	boost::asio::signal_set signals{io_context, SIGINT, SIGTERM};
+	boost::asio::signal_set signals{io_context, SIGINT};
 };
 
 

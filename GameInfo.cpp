@@ -1,6 +1,6 @@
 #include "GameInfo.h"
 
-static std::pair<int, int> direction_to_pair(Direction direction) {
+static inline std::pair<int, int> direction_to_pair(Direction direction) {
 	switch (direction) {
 		case Up:
 			return {0, 1};
@@ -77,11 +77,14 @@ void GameInfo::apply_GameEnded(struct GameEnded &message) {
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
 	bombs.insert({data.bomb_id, Bomb(data.bomb_id, data.position, bomb_timer)});
-	std::cerr << "Bomb placed at " << data.position.x << " " << data.position.y << std::endl;
+	std::cerr << "Bomb placed at " << data.position.x << " " << data.position.y
+	          << std::endl;
 }
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {
+	std::cerr << "JAZDA" << std::endl;
 	mark_explosions(data);
+	std::cerr << "WESZLO PO MARKED EXPLOSIONS" << std::endl;
 
 	for (auto robot_id: data.robots_destroyed) {
 		if (players.find(robot_id) != players.end()) {
@@ -158,20 +161,29 @@ void GameInfo::change_scores_and_revive_players() {
 	}
 }
 
-void GameInfo::mark_explosions_in_direction(Position &bomb_pos, Direction direction) {
+void
+GameInfo::mark_explosions_in_direction(Position bomb_pos, Direction direction) {
 
 	auto pair = direction_to_pair(direction);
 
+	std::cerr << "bomb pos: " << bomb_pos.x << " " << bomb_pos.y << std::endl;
+
 	for (int i = 1; i <= explosion_radius; i++) {
-		Position new_pos(static_cast<uint16_t>(bomb_pos.x + i * pair.first),
-		                 static_cast<uint16_t>(bomb_pos.x + i * pair.second));
+		int new_x = bomb_pos.x + i * pair.first;
+		int new_y = bomb_pos.y + i * pair.second;
+		std::cerr << "new pos_b: " << new_x << " " << new_y << std::endl;
+		Position new_pos(static_cast<uint16_t>(new_x),
+		                 static_cast<uint16_t>(new_y));
+
+		std::cerr << "new_pos: " << new_pos.x << " " << new_pos.y << " ";
 
 		if (is_correct_position(new_pos)) {
+			std::cerr << "correct" << std::endl;
 			board.at(new_pos).mark_exploded();
+			if (board.at(new_pos).is_solid())
+				break;
 		}
-		if (board.at(new_pos).is_solid()) {
-			break;
-		}
+
 	}
 }
 
@@ -179,6 +191,8 @@ void GameInfo::mark_explosions_in_direction(Position &bomb_pos, Direction direct
 void GameInfo::mark_explosions(struct BombExploded &data) {
 
 	Position bomb_pos = bombs.at(data.bomb_id).position;
+
+	std::cerr << "Bomb pos: " << bomb_pos.x << " " << bomb_pos.y << std::endl;
 
 	board.at(bomb_pos).mark_exploded();
 

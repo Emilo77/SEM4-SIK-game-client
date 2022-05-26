@@ -8,6 +8,10 @@
 #include <map>
 #include "Utils.h"
 
+using bomb_id_t = uint32_t;
+using player_id_t = uint8_t;
+using score_t = uint32_t;
+
 
 enum ClientMessageToServerType {
 	JoinServer = 0,

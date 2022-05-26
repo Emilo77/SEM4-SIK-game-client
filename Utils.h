@@ -84,7 +84,7 @@ public:
 	std::string name;
 	std::string address;
 
-	bool is_dead() const { return dead; }
+	[[nodiscard]] bool is_dead() const { return dead; }
 
 	void explode() { dead = true; }
 

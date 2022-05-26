@@ -143,7 +143,7 @@ private:
 	void decrease_bomb_timers();
 
 	/* Zapisanie eksplozji pojedynczej bomby w danym kierunku */
-	void mark_explosions_in_direction(Position &bomb_pos, Direction direction);
+	void mark_explosions_in_direction(Position bomb_pos, Direction direction);
 
 	/* Zapisanie eksplozji pojedynczej bomby */
 	void mark_explosions(struct BombExploded &data);
