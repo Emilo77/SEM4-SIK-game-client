@@ -1,5 +1,54 @@
 #include "GameInfo.h"
 
+void Board::reset(uint16_t size_x, uint16_t size_y) {
+	/* Zmieniamy rozmiar planszy. */
+	fields.resize(size_x);
+	for (auto &row: fields) {
+		row.resize(size_y);
+	}
+
+	/* Resetujemy wszystkie pola. */
+	for (auto &column: fields) {
+		for (auto &field: column) {
+			field.make_air();
+			field.reset_exploded();
+		}
+	}
+}
+
+std::list<Position> Board::return_blocks() {
+	std::list<Position> blocks;
+	/* Iterujemy się po całej planszy. */
+	for (size_t column = 0; column < fields.size(); column++) {
+		for (size_t row = 0; row < fields[column].size(); row++) {
+			/* Jeżeli pole jest blokiem, dodajemy jego pozycję do listy. */
+			if (fields[column][row].is_solid()) {
+				blocks.emplace_back(column, row);
+			}
+		}
+	}
+	return blocks;
+}
+
+std::list<Position> Board::return_explosions() {
+	std::list<Position> exploded;
+	/* Iterujemy się po całej planszy. */
+	for (size_t column = 0; column < fields.size(); column++) {
+		for (size_t row = 0; row < fields[column].size(); row++) {
+			/* Jeżeli pole eksplodowało w aktualnej turze, dodajemy jego
+			 * pozycję do listy, zmieniamy pole na nie-blok
+			 * oraz resetujemy stan eksplozji. */
+			if (fields[column][row].is_exploded()) {
+				exploded.emplace_back(column, row);
+				fields[column][row].make_air();
+				fields[column][row].reset_exploded();
+			}
+		}
+	}
+	return exploded;
+}
+
+/* Funkcja pomocnicza do obliczania eksplozji po wybuchu bomby. */
 static inline std::pair<int, int> direction_to_pair(Direction direction) {
 	switch (direction) {
 		case Up:
@@ -15,6 +64,7 @@ static inline std::pair<int, int> direction_to_pair(Direction direction) {
 }
 
 void GameInfo::apply_changes_from_server(ServerMessageToClient &msg) {
+	/* Na podstawie typu wiadomości, aktualizujemy stan rozgrywki. */
 	switch (msg.type) {
 		case Hello:
 			apply_Hello(std::get<struct Hello>(msg.data));
@@ -35,8 +85,10 @@ void GameInfo::apply_changes_from_server(ServerMessageToClient &msg) {
 }
 
 void GameInfo::apply_Hello(struct Hello &message) {
+	/* Resetujemy kontenery. */
 	clear_containers();
 
+	/* Aktualizujemy parametry na podstawie wiadomości. */
 	server_name = message.server_name;
 	players_count = message.players_count;
 	size_x = message.size_x;
@@ -45,6 +97,7 @@ void GameInfo::apply_Hello(struct Hello &message) {
 	explosion_radius = message.explosion_radius;
 	bomb_timer = message.bomb_timer;
 
+	/* Resetujemy planszę. */
 	board.reset(message.size_x, message.size_y);
 }
 
@@ -53,49 +106,62 @@ void GameInfo::apply_AcceptedPlayer(struct AcceptedPlayer &message) {
 }
 
 void GameInfo::apply_GameStarted(struct GameStarted &message) {
+	/* Zmieniamy stan na Gameplay. */
 	change_game_state(GameState::GameplayState);
 	players = message.players;
+	/* Aktualizujemy kontenery na podstawie otrzymanej listy graczy. */
 	initialize_containers();
 }
 
 void GameInfo::apply_Turn(struct Turn &message) {
+	/* Czyścimy eksplozje z poprzedniej tury. */
 	explosions.clear();
+	/* Zmniejszamy timer dla każdej bomby. */
 	decrease_bomb_timers();
 	turn = message.turn_number;
+	/* Aktualizujemy stan gry na podstawie każdego otrzymanego wydarzenia. */
 	for (auto &event: message.events) {
 		apply_event(event);
 	}
+	/* Przywracamy graczy, aktualizujemy ich scores. */
 	change_scores_and_revive_players();
+	/* Aktualizujemy eksplozje, czyścimy zniszczone bloki. */
 	explosions = board.return_explosions();
 }
 
 void GameInfo::apply_GameEnded(struct GameEnded &message) {
 	scores = message.scores;
+	/* Zmieniamy stan na Lobby. */
 	change_game_state(GameState::LobbyState);
-	clear_containers(); // może niepotrzebne
+	clear_containers();
 }
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
-	bombs.insert({data.bomb_id, Bomb(data.bomb_id, data.position, bomb_timer)});
+	bombs.insert({data.bomb_id, Bomb( data.position, bomb_timer)});
 }
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {
+	/* Oznaczamy pola, które eksplodowały przez bombę. */
 	mark_explosions(data);
 
+	/* Oznaczamy graczy zniszczonych przez bombę. */
 	for (auto robot_id: data.robots_destroyed) {
 		if (players.find(robot_id) != players.end()) {
 			players.at(robot_id).explode();
 		}
 	}
 
+	/* Oznaczamy zniszczone pola. */
 	for (auto &position: data.blocks_destroyed) {
 		board.at(position).mark_exploded();
 	}
 
+	/* Usuwamy bombę z listy. */
 	bombs.erase(data.bomb_id);
 }
 
 void GameInfo::apply_PlayerMoved(struct PlayerMoved &data) {
+	/* Zmieniamy aktualną pozycję gracza. */
 	if (players.find(data.player_id) != players.end()) {
 		player_positions.at(data.player_id) = data.position;
 	}
@@ -106,6 +172,7 @@ void GameInfo::apply_BlockPlaced(struct BlockPlaced &data) {
 }
 
 void GameInfo::apply_event(Event &event) {
+	/* Aktualizujemy stan gry na podstawie wydarzenia. */
 	switch (event.type) {
 		case BombPlaced:
 			apply_BombPlaced(std::get<struct BombPlaced>(event.data));
@@ -122,6 +189,7 @@ void GameInfo::apply_event(Event &event) {
 	}
 }
 
+/* Funkcja sprawdzająca, czy pozycja mieści się w zakresie planszy. */
 bool GameInfo::is_correct_position(Position position) const {
 	return position.x < size_x && position.y < size_y;
 }
@@ -159,20 +227,23 @@ void GameInfo::change_scores_and_revive_players() {
 
 void
 GameInfo::mark_explosions_in_direction(Position bomb_pos, Direction direction) {
-
 	auto pair = direction_to_pair(direction);
 
 	for (int i = 1; i <= explosion_radius; i++) {
 		int new_x = bomb_pos.x + i * pair.first;
 		int new_y = bomb_pos.y + i * pair.second;
 
+		/* Otrzymujemy nowe pozycje w określonym kierunku od bomby. */
 		Position new_pos(static_cast<uint16_t>(new_x),
 		                 static_cast<uint16_t>(new_y));
 
 
+		/* Sprawdzamy, czy eksplozja mieści się w zakresie planszy. */
 		if (is_correct_position(new_pos)) {
-			std:: cerr << "new_pos: " << new_pos.x << " " << new_pos.y << std::endl;
+			/* Oznaczamy pole */
 			board.at(new_pos).mark_exploded();
+			/* Jeżeli eksplodował blok, wychodzimy z pętli,
+			 * ponieważ eksplozje nie docierają za blokami. */
 			if (board.at(new_pos).is_solid())
 				break;
 		}
@@ -183,38 +254,32 @@ void GameInfo::mark_explosions(struct BombExploded &data) {
 
 	Position bomb_pos = bombs.at(data.bomb_id).position;
 
-	std::cerr << "Bomb pos: " << bomb_pos.x << " " << bomb_pos.y << std::endl;
-
+	/* Oznaczamy pole na pozycji bomby. */
 	board.at(bomb_pos).mark_exploded();
 
+	/* Jeżeli bomba eksplodowała na bloku, kończymy działanie,
+	 * bomba rozsadza tylko pojedynczy blok, na którym została położona. */
 	if (board.at(bomb_pos).is_solid()) {
 		return;
 	}
 
+	/* W przeciwnym wypadku obliczamy eksplozje w czterech kierunkach od bomby.*/
 	mark_explosions_in_direction(bomb_pos, Up);
 	mark_explosions_in_direction(bomb_pos, Right);
 	mark_explosions_in_direction(bomb_pos, Down);
 	mark_explosions_in_direction(bomb_pos, Left);
-
 }
 
 bool GameInfo::is_gameplay() {
-	bool result = false;
-	game_protection.lock();
-	if (game_state == GameplayState) {
-		result = true;
-	}
-	game_protection.unlock();
-	return result;
+	return game_state == GameplayState;
 }
 
 void GameInfo::change_game_state(GameState state) {
-	game_protection.lock();
 	game_state = state;
-	game_protection.unlock();
 }
 
 Lobby GameInfo::create_lobby_msg() {
+	/* Tworzymy wiadomość Lobby. */
 	return {server_name, players_count, size_x, size_y, game_length,
 	        explosion_radius, bomb_timer, players};
 }
@@ -225,55 +290,7 @@ struct GamePlay GameInfo::create_gameplay_msg() {
 	for (auto &bomb: bombs) {
 		bombs_list.push_back(bomb.second);
 	}
-
-//	std:: cerr << "Message: GamePlay" << std::endl;
-//	std:: cerr << "Turn: " << turn << std::endl;
-//	std::cerr << "Blocks: " << std::endl;
-//	for (auto &block: blocks) {
-//		std::cerr << block.x << " " << block.y << std::endl;
-//	}
-//	std::cerr << "Bombs: " << std::endl;
-//	for (auto &bomb: bombs_list) {
-//		std::cerr << bomb.position.x << " " << bomb.position.y << " " << bomb.timer << std::endl;
-//	}
-//	std::cerr << "Explosions: " << std::endl;
-//	for (auto &explosion: explosions) {
-//		std::cerr << explosion.x << " " << explosion.y << std::endl;
-//	}
-//	std::cerr << "Scores: " << std::endl;
-//	for (auto &score: scores) {
-//		std::cerr << score.first << " " << score.second << std::endl;
-//}
-
-//	std::cerr << "Turn: " << turn << std::endl;
-//	std::cerr << "Players: " << std::endl;
-//	for (auto &player: players) {
-//		std::cerr << player.second.name << " " << player.second.address
-//		          << std::endl;
-//	}
-//	std::cerr << "Player positions: " << std::endl;
-//	for (auto &player: player_positions) {
-//		std::cerr << player.first << " " << player.second.x << " "
-//		          << player.second.y << std::endl;
-//	}
-//	std::cerr << "Blocks: " << std::endl;
-//	for (auto &block: blocks) {
-//		std::cerr << block.x << " " << block.y  << " " << std::endl;
-//	}
-//
-//	std::cerr << "Bombs: " << std::endl;
-//	for (auto &bomb: bombs_list) {
-//		std::cerr << bomb.position.x << " " << bomb.position.y  << " " << std::endl;
-//	}
-//	std::cerr << "Explosions: " << std::endl;
-//	for (auto &explosion: explosions) {
-//		std::cerr << explosion.x << " " << explosion.y  << " " << std::endl;
-//	}
-//	std::cerr << "Scores: " << std::endl;
-//	for (auto &score: scores) {
-//		std::cerr << score.first << " " << score.second  << " " << std::endl;
-//	}
-
+	/* Zwracamy wiadomość GamePlay. */
 	return {server_name, size_x, size_y, game_length, turn, players,
 	        player_positions, blocks, bombs_list, explosions, scores};
 }

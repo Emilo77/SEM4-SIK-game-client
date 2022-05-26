@@ -8,7 +8,6 @@
 
 
 #include <iostream>
-#include <thread>
 
 #include <boost/asio.hpp>
 #include <boost/asio/signal_set.hpp>
@@ -43,7 +42,6 @@ public:
 		do_receive_from_gui();
 		io_context.run();
 	}
-
 
 private:
 	void initialize();

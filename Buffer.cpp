@@ -6,13 +6,9 @@ static bool invalid_server_message_type(uint8_t type) { return type > 4; }
 
 static bool invalid_gui_message_type(uint8_t type) { return type > 2; }
 
-uint8_t Buffer::convert_to_send(uint8_t number) { return number; }
-
 uint16_t Buffer::convert_to_send(uint16_t number) { return htobe16(number); }
 
 uint32_t Buffer::convert_to_send(uint32_t number) { return htobe32(number); }
-
-uint8_t Buffer::convert_to_receive(uint8_t number) { return number; }
 
 uint16_t Buffer::convert_to_receive(uint16_t number) { return be16toh(number); }
 
@@ -25,7 +21,6 @@ void Buffer::insert_raw(const string &str) {
 }
 
 void Buffer::insert(uint8_t number) {
-	number = convert_to_send(number);
 	memcpy(buffer + send_index, &number, sizeof(number));
 	send_index += sizeof(number);
 }
@@ -109,7 +104,6 @@ void Buffer::receive(uint8_t &number) {
 	size_t size = sizeof(number);
 	memcpy(&number, buffer + read_index, size);
 	read_index += size;
-	number = convert_to_receive(number);
 }
 
 void Buffer::receive(uint16_t &number) {

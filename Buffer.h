@@ -9,21 +9,16 @@
 #include <cstring>
 #include <optional>
 
-
 using std::string;
 
 class Buffer {
 private:
 	/* Konwertowanie liczby przed wysłaniem wiadomości */
-	static uint8_t convert_to_send(uint8_t number);
-
 	static uint16_t convert_to_send(uint16_t number);
 
 	static uint32_t convert_to_send(uint32_t number);
 
 	/* Konwertowanie liczby po odebraniu wiadomości */
-	static uint8_t convert_to_receive(uint8_t number);
-
 	static uint16_t convert_to_receive(uint16_t number);
 
 	static uint32_t convert_to_receive(uint32_t number);
@@ -155,14 +150,6 @@ public:
 
 	/* Wskaźnik na bufor */
 	char *get() { return buffer; }
-
-	void print(size_t size) {
-		std::cerr << "size: " << size << std::endl;
-		for (size_t i = 0; i < size; i++) {
-			std::cerr << (int) buffer[i] << " | ";
-		}
-		std::cerr << std::endl;
-	}
 
 private:
 	char buffer[BUFFER_SIZE]{};

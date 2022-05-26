@@ -1,18 +1,12 @@
 #ifndef ZADANIE02_CLIENT_MESSAGES_H
 #define ZADANIE02_CLIENT_MESSAGES_H
 
-#include <utility>
 #include <variant>
 #include <string>
-#include <cstdint>
 #include <map>
 #include "Utils.h"
 
-using bomb_id_t = uint32_t;
-using player_id_t = uint8_t;
-using score_t = uint32_t;
-
-
+/* Typ wiadomości wysyłanej od klienta do serwera. */
 enum ClientMessageToServerType {
 	JoinServer = 0,
 	PlaceBombServer = 1,
@@ -20,6 +14,7 @@ enum ClientMessageToServerType {
 	MoveServer = 3,
 };
 
+/* Typ wiadomości wysyłanej od serwera do klienta. */
 enum ServerMessageToClientType {
 	Hello = 0,
 	AcceptedPlayer = 1,
@@ -28,16 +23,17 @@ enum ServerMessageToClientType {
 	GameEnded = 4,
 };
 
+/* Typ wiadomości wysyłanej od GUI do klienta. */
 enum DisplayMessageToClientType {
 	PlaceBombDisplay = 0,
 	PlaceBlockDisplay = 1,
 	MoveDisplay = 2,
 };
 
-
+/* Wiadomość Hello */
 struct Hello {
 	std::string server_name;
-	uint8_t players_count;
+	player_id_t players_count;
 	uint16_t size_x;
 	uint16_t size_y;
 	uint16_t game_length;
@@ -45,28 +41,32 @@ struct Hello {
 	uint16_t bomb_timer;
 };
 
+/* Wiadomość AcceptedPlayer */
 struct AcceptedPlayer {
 	player_id_t player_id{};
 	Player player{};
 };
 
+/* Wiadomość GameStarted */
 struct GameStarted {
 	std::map<player_id_t, Player> players;
 };
 
+/* Wiadomość Turn */
 struct Turn {
 	uint16_t turn_number;
 	std::vector<Event> events;
 };
 
+/* Wiadomość GameEnded */
 struct GameEnded {
 	std::map<player_id_t, score_t> scores;
 };
 
-
+/* Wiadomość Lobby */
 typedef struct Lobby {
 	std::string server_name;
-	uint8_t players_count;
+	player_id_t players_count;
 	uint16_t size_x;
 	uint16_t size_y;
 	uint16_t game_length;
@@ -74,7 +74,7 @@ typedef struct Lobby {
 	uint16_t bomb_timer;
 	std::map<player_id_t, Player> players;
 
-	Lobby(std::string &serverName, uint8_t playersCount, uint16_t sizeX,
+	Lobby(std::string &serverName, player_id_t playersCount, uint16_t sizeX,
 	      uint16_t sizeY, uint16_t gameLength, uint16_t explosionRadius,
 	      uint16_t bombTimer, std::map<player_id_t, Player> &players)
 			: server_name(serverName),
@@ -87,6 +87,7 @@ typedef struct Lobby {
 			  players(players) {}
 } Lobby;
 
+/* Wiadomość Gameplay */
 typedef struct GamePlay {
 	std::string server_name;
 	uint16_t size_x;
@@ -122,6 +123,7 @@ typedef struct GamePlay {
 } GamePlay;
 
 
+/* Struktura wiadomości wysyłanej od serwera do klienta. */
 typedef struct ServerMessageToClient {
 	ServerMessageToClientType type;
 	std::variant<struct Hello, struct AcceptedPlayer,
@@ -135,6 +137,8 @@ typedef struct ServerMessageToClient {
 
 } ServerMessageToClient;
 
+
+/* Struktura wiadomości wysyłanej od GUI do klienta. */
 typedef struct DisplayMessageToClient {
 	DisplayMessageToClientType type;
 	Direction direction;
@@ -148,12 +152,15 @@ typedef struct DisplayMessageToClient {
 			: type(type), direction() {}
 } DisplayMessageToClient;
 
+
+/* Struktura wiadomości wysyłanej od klienta do serwera. */
 typedef struct ClientMessageToServer {
 	ClientMessageToServerType type;
 	std::variant<std::string, Direction> data;
 } ClientMessageToServer;
 
 
+/* Struktura wiadomości wysyłanej od klienta do GUI. */
 typedef struct ClientMessageToDisplay {
 	GameState state;
 	std::variant<struct Lobby, struct GamePlay> data;

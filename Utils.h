@@ -7,10 +7,12 @@
 #include <vector>
 #include <list>
 
+
 using player_id_t = uint8_t;
 using bomb_id_t = uint32_t;
 using score_t = uint32_t;
 
+/* Enum określający kierunek. */
 enum Direction {
 	Up = 0,
 	Right = 1,
@@ -18,66 +20,39 @@ enum Direction {
 	Left = 3,
 };
 
+/* Enum określający stan rozgrywki. */
 enum GameState {
 	LobbyState = 0,
 	GameplayState = 1,
 };
 
-
-struct Position {
+/* Struktura określająca pozycję. */
+class Position {
+public:
 	uint16_t x;
 	uint16_t y;
 
 	Position() : x(0), y(0) {}
 
 	Position(uint16_t x, uint16_t y) : x(x), y(y) {}
-
-	bool operator==(const Position &rhs) const {
-		return x == rhs.x &&
-		       y == rhs.y;
-	}
-
-	bool operator!=(const Position &rhs) const {
-		return !(x == rhs.x && y == rhs.y);
-	}
-
-	bool operator<(const Position &rhs) const {
-		if (x < rhs.x)
-			return true;
-		if (rhs.x < x)
-			return false;
-		return y < rhs.y;
-	}
-
-	bool operator>(const Position &rhs) const {
-		return rhs < *this;
-	}
-
-	bool operator<=(const Position &rhs) const {
-		return !(rhs < *this);
-	}
-
-	bool operator>=(const Position &rhs) const {
-		return !(*this < rhs);
-	}
 };
 
+/* Klasa określająca bombę. */
 class Bomb {
 public:
-	bomb_id_t bomb_id;
 	Position position;
 	uint16_t timer;
 
-	Bomb(bomb_id_t bomb_id, Position position, uint16_t timer)
-			: bomb_id(bomb_id),
-			  position(position),
+	Bomb(Position position, uint16_t timer)
+			: position(position),
 			  timer(timer) {}
 
-	void decrease_timer() { timer--; }
-
-	bool operator<(const Bomb &rhs) const { return bomb_id < rhs.bomb_id; }
+	void decrease_timer() {
+		timer--;
+	}
 };
 
+/* Klasa określająca gracza. */
 class Player {
 	bool dead{false};
 public:
@@ -91,6 +66,7 @@ public:
 	void revive() { dead = false; }
 };
 
+/* Rodzaj wydarzenia. */
 enum EventType {
 	BombPlaced = 0,
 	BombExploded = 1,
@@ -98,23 +74,31 @@ enum EventType {
 	BlockPlaced = 3,
 };
 
+/* Wydarzenie BombPlaced. */
 struct BombPlaced {
 	uint32_t bomb_id;
 	Position position;
 };
+
+/* Wydarzenie BombExploded. */
 struct BombExploded {
 	uint32_t bomb_id;
 	std::vector<uint8_t> robots_destroyed;
 	std::vector<Position> blocks_destroyed;
 };
+
+/* Wydarzenie PlayerMoved. */
 struct PlayerMoved {
 	uint8_t player_id;
 	Position position;
 };
+
+/* Wydarzenie BlockPlaced. */
 struct BlockPlaced {
 	Position position;
 };
 
+/* Klasa określająca wydarzenie. */
 class Event {
 public:
 	EventType type;
@@ -122,11 +106,12 @@ public:
 			struct PlayerMoved, struct BlockPlaced> data;
 
 	explicit Event(EventType type,
-	               std::variant<struct BombPlaced, struct BombExploded,
-			               struct PlayerMoved, struct BlockPlaced> &data)
-			: type(type), data(data) {
-	}
+	               std::variant<struct BombPlaced,
+			               struct BombExploded,
+			               struct PlayerMoved,
+			               struct BlockPlaced> &data)
+			: type(type),
+			  data(data) {}
 };
-
 
 #endif//ZADANIE02_EVENT_H
