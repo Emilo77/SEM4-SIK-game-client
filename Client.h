@@ -19,12 +19,12 @@ using boost::asio::ip::udp;
 /* Obsługa sygnałów */
 static void handler(const boost::system::error_code &error, int signal_number) {
 	if (error) {
-		std::cerr << "Error while handling signal: " << error.message() << std::endl;
+		std::cerr << "Error while handling signal: " << error.message()
+		          << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	std::cout << "Signal " << signal_number << " received." << std::endl;
-	std::cerr << "handling signal " << signal_number << std::endl;
-	std::cerr << "Closing client." << signal_number << std::endl;
+	std::cerr << "Signal " << signal_number << " received." << std::endl;
+	std::cerr << "Thanks for using the client!" << std::endl;
 	//może przed tym będzie trzeba zamknąć sockety
 	exit(EXIT_SUCCESS);
 }
@@ -38,8 +38,9 @@ public:
 
 	/* Uruchomienie klienta */
 	void run() {
-		do_receive_from_gui();
+		signals.async_wait(handler);
 		do_receive_from_server();
+		do_receive_from_gui();
 		io_context.run();
 	}
 
@@ -80,7 +81,7 @@ private:
 
 	/* Przygotowanie wiadomości do wysłania */
 	std::optional<ClientMessageToDisplay>
-	prepare_msg_to_display(ServerMessageToClientType type);
+	prepare_msg_to_gui(ServerMessageToClientType type);
 
 	/* Wysłanie wiadomości do gui */
 	void do_send_gui(size_t send_length);
@@ -93,7 +94,9 @@ private:
 	boost::asio::io_context io_context;
 	std::optional<udp::socket> gui_socket;
 	std::optional<tcp::socket> server_socket;
-	boost::asio::signal_set signals{io_context, SIGINT};
+	std::optional<udp::endpoint> gui_endpoints;
+	std::optional<tcp::endpoint> server_endpoints;
+	boost::asio::signal_set signals{io_context, SIGINT, SIGTERM};
 };
 
 

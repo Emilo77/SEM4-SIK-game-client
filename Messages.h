@@ -125,9 +125,9 @@ typedef struct ServerMessageToClient {
 			data;
 
 	ServerMessageToClient(ServerMessageToClientType type,
-						  std::variant<struct Hello, struct AcceptedPlayer,
-									  struct GameStarted, struct Turn, struct GameEnded>
-									  data) : type(type), data(std::move(data)) {}
+	                      std::variant<struct Hello, struct AcceptedPlayer,
+			                      struct GameStarted, struct Turn, struct GameEnded>
+	                      data) : type(type), data(std::move(data)) {}
 
 //	ServerMessageToClient(ServerMessageToClientType type, struct Hello &data)
 //			: type(type), data(data) {}
@@ -151,7 +151,13 @@ typedef struct ServerMessageToClient {
 
 typedef struct DisplayMessageToClient {
 	DisplayMessageToClientType type;
-	Direction direction;
+	std::optional<Direction> direction;
+
+	DisplayMessageToClient(DisplayMessageToClientType type, Direction direction)
+			: type(type), direction(direction) {}
+
+	explicit DisplayMessageToClient(DisplayMessageToClientType type)
+			: type(type) {}
 } DisplayMessageToClient;
 
 typedef struct ClientMessageToServer {

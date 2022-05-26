@@ -101,7 +101,6 @@ void GameInfo::apply_PlayerMoved(struct PlayerMoved &data) {
 	}
 }
 
-
 void GameInfo::apply_BlockPlaced(struct BlockPlaced &data) {
 	board.at(data.position).make_block();
 }

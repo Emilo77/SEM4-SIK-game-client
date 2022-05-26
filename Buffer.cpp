@@ -4,7 +4,7 @@ static bool invalid_direction(uint8_t direction) { return direction > 3; }
 
 static bool invalid_server_message_type(uint8_t type) { return type > 4; }
 
-static bool invalid_display_message_type(uint8_t type) { return type > 2; }
+static bool invalid_gui_message_type(uint8_t type) { return type > 2; }
 
 uint8_t Buffer::convert_to_send(uint8_t number) { return number; }
 
@@ -170,11 +170,12 @@ struct BlockPlaced Buffer::receive_block_placed() {
 	return event_content;
 }
 
-void Buffer::receive_event(EventType type, Event &event) {
-	event.type = type;
+Event Buffer::receive_event() {
+	uint8_t type;
+	receive(type);
 	std::variant<struct BombPlaced, struct BombExploded,
 			struct PlayerMoved, struct BlockPlaced> data;
-	switch (type) {
+	switch ((EventType) type) {
 		case BombPlaced:
 			data = receive_bomb_placed();
 			break;
@@ -188,22 +189,14 @@ void Buffer::receive_event(EventType type, Event &event) {
 			data = receive_block_placed();
 			break;
 	}
-	event.data = data;
+	return Event((EventType) type, data);
 }
 
 void Buffer::receive_list_events(std::vector<Event> &vector) {
 	uint32_t vector_size;
 	receive(vector_size);
 	for (uint32_t i = 0; i < vector_size; ++i) {
-		uint8_t type;
-		receive(type);
-		std::variant<struct BombPlaced, struct BombExploded,
-				struct PlayerMoved, struct BlockPlaced> data;
-		Event event((EventType) type, data);
-
-		receive_event((EventType) type, event);
-
-		vector.push_back(event);
+		vector.push_back(receive_event());
 	}
 }
 
@@ -405,27 +398,30 @@ size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {
 }
 
 std::optional<DisplayMessageToClient>
-Buffer::receive_msg_from_display(size_t expected_size) {
+Buffer::receive_msg_from_gui(size_t expected_size) {
 	auto message = std::optional<DisplayMessageToClient>();
 	reset_read_index();
+
 	uint8_t message_type;
+	uint8_t direction;
+
 	receive(message_type);
-	if (invalid_display_message_type(message_type)) {
-		return {};
-	}
+
 	if (message_type == DisplayMessageToClientType::MoveDisplay) {
-		uint8_t direction;
 		receive(direction);
 		if (invalid_direction(direction)) {
 			return {};
 		}
-		message->direction = (Direction) direction;
+		message.emplace((DisplayMessageToClientType) message_type,
+		                (Direction) direction);
 	}
-	message->type = (DisplayMessageToClientType) message_type;
 
-	if (get_read_size() != expected_size) {
+	if (invalid_gui_message_type(message_type) ||
+	    get_read_size() != expected_size) {
 		return {};
 	}
+
+	message.emplace((DisplayMessageToClientType) message_type);
 	return message;
 }
 

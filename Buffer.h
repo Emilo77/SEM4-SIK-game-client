@@ -85,7 +85,7 @@ private:
 
 	struct BlockPlaced receive_block_placed();
 
-	void receive_event(EventType type, Event &event);
+	Event receive_event();
 
 	/* Odbieranie list */
 	void receive_list_events(std::vector<Event> &vector);
@@ -145,7 +145,7 @@ public:
 
 	/* Odbieranie wiadomości wysyłanej od gui */
 	std::optional<DisplayMessageToClient>
-	receive_msg_from_display(size_t expected_size);
+	receive_msg_from_gui(size_t expected_size);
 
 	/* Zwrócenie wielkości zapisanej wiadomości do bufora */
 	[[nodiscard]] size_t get_send_size() const { return send_index; }
@@ -155,6 +155,14 @@ public:
 
 	/* Wskaźnik na bufor */
 	char *get() { return buffer; }
+
+	void print(size_t size) {
+		std::cerr << "size: " << size << std::endl;
+		for (size_t i = 0; i < size; i++) {
+			std::cerr << (int) buffer[i] << " | ";
+		}
+		std::cerr << std::endl;
+	}
 
 private:
 	char buffer[BUFFER_SIZE]{};
