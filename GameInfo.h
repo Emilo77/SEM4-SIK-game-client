@@ -42,7 +42,7 @@ class Board {
 	std::vector<std::vector<Field>> fields;
 
 public:
-	/* Ustawienie planszy na odpowiedni rozmiar, zresetowanie pól */
+	/* Ustawiamy planszę na odpowiedni rozmiar i czyścimy ją */
 	void reset(uint16_t size_x, uint16_t size_y) {
 		fields.resize(size_x);
 		for (auto &row: fields) {
@@ -81,6 +81,7 @@ public:
 			for (size_t row = 0; row < fields[column].size(); row++) {
 				if (fields[column][row].is_exploded()) {
 					exploded.emplace_back(column, row);
+					fields[column][row].make_air();
 					fields[column][row].reset_exploded();
 				}
 			}

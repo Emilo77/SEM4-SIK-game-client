@@ -25,7 +25,7 @@ static void handler(const boost::system::error_code &error, int signal_number) {
 	}
 	std::cerr << "Signal " << signal_number << " received." << std::endl;
 	std::cerr << "Thanks for using the client!" << std::endl;
-	//może przed tym będzie trzeba zamknąć sockety
+
 	exit(EXIT_SUCCESS);
 }
 
@@ -36,7 +36,7 @@ public:
 		initialize();
 	}
 
-	/* Uruchomienie klienta */
+	/* Uruchomienie klienta. */
 	void run() {
 		signals.async_wait(handler);
 		do_receive_from_server();
@@ -56,7 +56,7 @@ private:
 	void do_receive_from_gui();
 
 	/* Obsługa wiadomości */
-	void do_handle_gui(const boost::system::error_code &ec);
+	void do_handle_gui();
 
 	/* Obsługa wiadomości */
 	std::optional<size_t> handle_gui_message();
@@ -74,7 +74,7 @@ private:
 	void do_receive_from_server();
 
 	/* Obsługa wiadomości */
-	void do_handle_server(const boost::system::error_code &ec);
+	void do_handle_server();
 
 	/* Obsługa wiadomości */
 	std::optional<size_t> handle_message_from_server();

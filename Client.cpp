@@ -1,13 +1,15 @@
 #include "Client.h"
 
 void Client::exit_program(int status) {
-	/* Zamykamy wszystkie otwarte gniazda. */
+	/* Zamykamy gniazdo serwera, jeżeli jest otwarte. */
 	if (server_socket.value().is_open()) {
 		server_socket.value().close();
 	}
+	/* Zamykamy gniazdo gui, jeżeli jest otwarte. */
 	if (gui_socket.value().is_open()) {
 		gui_socket.value().close();
 	}
+	/* Kończymy działanie programu z odpowiednim kodem wyjścia. */
 	exit(status);
 }
 
@@ -36,12 +38,11 @@ void Client::initialize() {
 
 		/* Łączymy gniazda z odpowiednimi endpointami */
 		server_socket.value().connect(server_endpoints.value());
-//		gui_socket.value().connect(gui_endpoints);
 
 		/* Wyłączamy algorytm Nagle'a */
 		server_socket.value().set_option(tcp::no_delay(true));
 	}
-	/* W przypadku błędu wypisujemy błąd i kończymy działanie programu */
+		/* W przypadku błędu wypisujemy błąd i kończymy działanie programu */
 	catch (std::exception &e) {
 		std::cerr << "Exception: " << e.what() << "\n";
 		exit_program(EXIT_FAILURE);
@@ -81,7 +82,6 @@ Client::prepare_msg_to_server(DisplayMessageToClient &message) {
 				new_message.type = ClientMessageToServerType::PlaceBlockServer;
 				break;
 			case MoveDisplay:
-				std:: cerr << "Direction: " << message.direction << std::endl;
 				new_message.type = ClientMessageToServerType::MoveServer;
 				new_message.data = message.direction;
 		}
@@ -93,33 +93,39 @@ Client::prepare_msg_to_server(DisplayMessageToClient &message) {
 }
 
 void Client::do_receive_from_gui() {
+	/* Odbieramy wiadomość od gui i wykonujemy kod w funkcji lambda. */
 	gui_socket.value().async_receive(
 			boost::asio::buffer(buffer.get(), BUFFER_SIZE),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
-				received_length = length;
-//				std::cerr << "Odbieranie od gui: " << std::endl;
-//				buffer.print(received_length);
-				do_handle_gui(ec);
+				if (!ec) {
+					received_length = length;
+					do_handle_gui();
+				} else {
+					/* W przypadku błędu z połączeniem wypisujemy błąd
+					 * i kończymy działanie programu. */
+					std::cerr << "Error receiving from gui: " << ec.message()
+					          << std::endl;
+					exit_program(EXIT_FAILURE);
+				}
 			});
 }
 
-void Client::do_handle_gui(const boost::system::error_code &ec) {
-	if (!ec) {
-		auto send = handle_gui_message();
-		if (send.has_value()) {
-			do_send_server(send.value());
-		} else {
-			do_receive_from_gui();
-		}
+void Client::do_handle_gui() {
+	/* Obsługujemy wiadomość otrzymaną od GUI i na jej podstawie
+	 * zwracamy wiadomość do serwera. Jeżeli wiadomość jest niepoprawna,
+	 * ignorujemy ją. Na koniec powracamy do nasłuchiwania */
+	auto send = handle_gui_message();
+	if (send.has_value()) {
+		do_send_server(send.value());
 	} else {
-		std::cerr << "Error receiving from gui: " << ec.message() << std::endl;
-		exit_program(EXIT_FAILURE);
+		do_receive_from_gui();
 	}
 }
 
 
 void Client::do_send_server(size_t send_length) {
+	/* Wysyłamy wiadomość do serwera. */
 	server_socket.value().async_send(
 			boost::asio::buffer(buffer.get(), send_length),
 			[this](boost::system::error_code ec,
@@ -127,6 +133,11 @@ void Client::do_send_server(size_t send_length) {
 				if (!ec) {
 					do_receive_from_gui();
 				} else {
+					/* W przypadku błędu z połączeniem wypisujemy błąd
+					 * i kończymy działanie programu. */
+					std::cerr << "Error sending to server: " << ec.message()
+					          << std::endl;
+					exit_program(EXIT_FAILURE);
 				}
 			});
 }
@@ -139,14 +150,14 @@ std::optional<size_t> Client::handle_message_from_server() {
 			/* Jeżeli wiadomość jest poprawna, aktualizujemy stan gry. */
 			game_info.apply_changes_from_server(message.value());
 
-				/* Na podstawie otrzymanego komunikatu, odpowiadamy GUI:
-				 * Turn: wysyłamy Game
-				 * AcceptedPlayer, GameEnded, Hello: wysyłamy Lobby
-				 * GameStarted: nie wysyłamy nic */
-				auto reply = prepare_msg_to_gui(message.value().type);
-				if (reply.has_value()) {
-					return buffer.insert_msg_to_display(reply.value());
-				}
+			/* Na podstawie otrzymanego komunikatu, odpowiadamy GUI:
+			 * Turn: wysyłamy Game
+			 * AcceptedPlayer, GameEnded, Hello: wysyłamy Lobby
+			 * GameStarted: nie wysyłamy nic */
+			auto reply = prepare_msg_to_gui(message.value().type);
+			if (reply.has_value()) {
+				return buffer.insert_msg_to_display(reply.value());
+			}
 		} else {
 			/* Jeżeli wiadomość jest w niepoprawnym formacie, rozłączamy się
 			 * i kończymy działanie programu. */
@@ -168,13 +179,18 @@ std::optional<size_t> Client::handle_message_from_server() {
 }
 
 
-std::optional<ClientMessageToDisplay> Client::prepare_msg_to_gui(ServerMessageToClientType type) {
+std::optional<ClientMessageToDisplay>
+Client::prepare_msg_to_gui(ServerMessageToClientType type) {
+	/* Tworzymy wiadomość na podstawie aktualnego stanu gry. */
 	std::optional<ClientMessageToDisplay> reply;
-	/* Tworzymy wiadomość na podstawie aktualnego stanu gry */
+	/* W przypadku wiadomości GameStarted nie wysyłamy komunikatu do GUI. */
 	if (type == ServerMessageToClientType::GameStarted) {
 		return {};
+		/* W przypadku wiadomości Turn wysyłamy wiadomość typu Gameplay. */
 	} else if (type == ServerMessageToClientType::Turn) {
-		reply.emplace(GameState::GameplayState, game_info.create_gameplay_msg());
+		reply.emplace(GameState::GameplayState,
+		              game_info.create_gameplay_msg());
+		/* W przypadku innych wiadomości wysyłamy wiadomość typu Lobby. */
 	} else {
 		reply.emplace(GameState::LobbyState, game_info.create_lobby_msg());
 	}
@@ -182,35 +198,38 @@ std::optional<ClientMessageToDisplay> Client::prepare_msg_to_gui(ServerMessageTo
 }
 
 void Client::do_receive_from_server() {
+	/* Odbieramy wiadomość z serwera. */
 	server_socket.value().async_receive(
 			boost::asio::buffer(buffer.get(), BUFFER_SIZE),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
-				received_length = length;
-				std::cerr << "Odbieranie od servera: " << std::endl;
-				buffer.print(received_length);
-				do_handle_server(ec);
+				if (!ec) {
+					received_length = length;
+					do_handle_server();
+				} else {
+					/* W przypadku błędu z połączeniem wypisujemy błąd
+                    * i kończymy działanie programu. */
+					std::cerr << "Error receiving from server: " << ec.message()
+					          << std::endl;
+					exit_program(EXIT_FAILURE);
+				}
 			});
 }
 
-void Client::do_handle_server(const boost::system::error_code &ec) {
-	if (!ec) {
-		auto send = handle_message_from_server();
-		if (send.has_value()) {
-			do_send_gui(send.value());
-		} else {
-			do_receive_from_server();
-		}
+void Client::do_handle_server() {
+	/* Obsługujemy otrzymaną od serwera wiadomość. Na jej podstawie
+	 * aktualizujemy stan gry oraz wysyłamy wiadomość zwrotną do GUI. */
+	auto send = handle_message_from_server();
+	if (send.has_value()) {
+		do_send_gui(send.value());
 	} else {
-		std::cerr << "Error receiving from server: " << ec.message() << std::endl;
-
-		exit_program(EXIT_FAILURE);
+		do_receive_from_server();
 	}
+
 }
 
 void Client::do_send_gui(size_t send_length) {
-//	std::cerr << "Wysyłanie do gui: " << std::endl;
-//	buffer.print(send_length);
+	/* Wysyłamy wiadomość do GUI. */
 	gui_socket.value().async_send_to(
 			boost::asio::buffer(buffer.get(), send_length),
 			gui_endpoints.value(),
@@ -218,8 +237,11 @@ void Client::do_send_gui(size_t send_length) {
 			       std::size_t length) {
 				if (!ec) {
 					do_receive_from_server();
-
 				} else {
+					/* W przypadku błędu z połączeniem wypisujemy błąd
+					* i kończymy działanie programu. */
+					std::cerr << "Error sending to GUI: " << ec.message()
+					          << std::endl;
 					exit_program(EXIT_FAILURE);
 				}
 			});

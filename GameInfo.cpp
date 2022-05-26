@@ -60,7 +60,7 @@ void GameInfo::apply_GameStarted(struct GameStarted &message) {
 
 void GameInfo::apply_Turn(struct Turn &message) {
 	explosions.clear();
-	decrease_bomb_timers(); //może nie w tym miejscu
+	decrease_bomb_timers();
 	turn = message.turn_number;
 	for (auto &event: message.events) {
 		apply_event(event);
@@ -77,14 +77,10 @@ void GameInfo::apply_GameEnded(struct GameEnded &message) {
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
 	bombs.insert({data.bomb_id, Bomb(data.bomb_id, data.position, bomb_timer)});
-	std::cerr << "Bomb placed at " << data.position.x << " " << data.position.y
-	          << std::endl;
 }
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {
-	std::cerr << "JAZDA" << std::endl;
 	mark_explosions(data);
-	std::cerr << "WESZLO PO MARKED EXPLOSIONS" << std::endl;
 
 	for (auto robot_id: data.robots_destroyed) {
 		if (players.find(robot_id) != players.end()) {
@@ -93,7 +89,7 @@ void GameInfo::apply_BombExploded(struct BombExploded &data) {
 	}
 
 	for (auto &position: data.blocks_destroyed) {
-		board.at(position).make_air();
+		board.at(position).mark_exploded();
 	}
 
 	bombs.erase(data.bomb_id);
@@ -166,27 +162,22 @@ GameInfo::mark_explosions_in_direction(Position bomb_pos, Direction direction) {
 
 	auto pair = direction_to_pair(direction);
 
-	std::cerr << "bomb pos: " << bomb_pos.x << " " << bomb_pos.y << std::endl;
-
 	for (int i = 1; i <= explosion_radius; i++) {
 		int new_x = bomb_pos.x + i * pair.first;
 		int new_y = bomb_pos.y + i * pair.second;
-		std::cerr << "new pos_b: " << new_x << " " << new_y << std::endl;
+
 		Position new_pos(static_cast<uint16_t>(new_x),
 		                 static_cast<uint16_t>(new_y));
 
-		std::cerr << "new_pos: " << new_pos.x << " " << new_pos.y << " ";
 
 		if (is_correct_position(new_pos)) {
-			std::cerr << "correct" << std::endl;
+			std:: cerr << "new_pos: " << new_pos.x << " " << new_pos.y << std::endl;
 			board.at(new_pos).mark_exploded();
 			if (board.at(new_pos).is_solid())
 				break;
 		}
-
 	}
 }
-
 
 void GameInfo::mark_explosions(struct BombExploded &data) {
 
@@ -234,6 +225,54 @@ struct GamePlay GameInfo::create_gameplay_msg() {
 	for (auto &bomb: bombs) {
 		bombs_list.push_back(bomb.second);
 	}
+
+//	std:: cerr << "Message: GamePlay" << std::endl;
+//	std:: cerr << "Turn: " << turn << std::endl;
+//	std::cerr << "Blocks: " << std::endl;
+//	for (auto &block: blocks) {
+//		std::cerr << block.x << " " << block.y << std::endl;
+//	}
+//	std::cerr << "Bombs: " << std::endl;
+//	for (auto &bomb: bombs_list) {
+//		std::cerr << bomb.position.x << " " << bomb.position.y << " " << bomb.timer << std::endl;
+//	}
+//	std::cerr << "Explosions: " << std::endl;
+//	for (auto &explosion: explosions) {
+//		std::cerr << explosion.x << " " << explosion.y << std::endl;
+//	}
+//	std::cerr << "Scores: " << std::endl;
+//	for (auto &score: scores) {
+//		std::cerr << score.first << " " << score.second << std::endl;
+//}
+
+//	std::cerr << "Turn: " << turn << std::endl;
+//	std::cerr << "Players: " << std::endl;
+//	for (auto &player: players) {
+//		std::cerr << player.second.name << " " << player.second.address
+//		          << std::endl;
+//	}
+//	std::cerr << "Player positions: " << std::endl;
+//	for (auto &player: player_positions) {
+//		std::cerr << player.first << " " << player.second.x << " "
+//		          << player.second.y << std::endl;
+//	}
+//	std::cerr << "Blocks: " << std::endl;
+//	for (auto &block: blocks) {
+//		std::cerr << block.x << " " << block.y  << " " << std::endl;
+//	}
+//
+//	std::cerr << "Bombs: " << std::endl;
+//	for (auto &bomb: bombs_list) {
+//		std::cerr << bomb.position.x << " " << bomb.position.y  << " " << std::endl;
+//	}
+//	std::cerr << "Explosions: " << std::endl;
+//	for (auto &explosion: explosions) {
+//		std::cerr << explosion.x << " " << explosion.y  << " " << std::endl;
+//	}
+//	std::cerr << "Scores: " << std::endl;
+//	for (auto &score: scores) {
+//		std::cerr << score.first << " " << score.second  << " " << std::endl;
+//	}
 
 	return {server_name, size_x, size_y, game_length, turn, players,
 	        player_positions, blocks, bombs_list, explosions, scores};
