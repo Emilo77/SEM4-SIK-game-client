@@ -101,7 +101,8 @@ Client::prepare_msg_to_server(GuiMessageToClient &message) {
 void Client::do_receive_from_gui() {
 	/* Odbieramy wiadomość od gui i wykonujemy kod w funkcji lambda. */
 	gui_socket.value().async_receive(
-			boost::asio::buffer(gui_to_server_buffer.get_receive(), BUFFER_SIZE),
+			boost::asio::buffer(gui_to_server_buffer.get_receive(),
+			                    BUFFER_SIZE),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec) {
@@ -149,48 +150,39 @@ void Client::do_send_server(size_t send_length) {
 }
 
 std::optional<size_t> Client::handle_message_from_server() {
-	if (received_length > 0) {
-		/* Wyciągamy i przetwarzamy wiadomość z bufora. */
-		std::optional<ServerMessageToClient> message;
-		try {
-			message = server_to_gui_buffer.receive_msg_from_server(
-					received_length);
 
-			/* Jeżeli wiadomość jest poprawna, aktualizujemy stan gry. */
-			game_info.apply_changes_from_server(message.value());
+	/* Wyciągamy i przetwarzamy wiadomość z bufora. */
+	std::optional<ServerMessageToClient> message;
+	try {
+		message = server_to_gui_buffer.receive_msg_from_server(
+				received_length);
+		received_length = 0;
 
-			/* Na podstawie otrzymanego komunikatu, odpowiadamy GUI:
-			 * Turn: wysyłamy Game
-			 * AcceptedPlayer, GameEnded, Hello: wysyłamy Lobby
-			 * GameStarted: nie wysyłamy nic */
-			auto reply = prepare_msg_to_gui(message.value().type);
-			if (reply.has_value()) {
-				return server_to_gui_buffer.insert_msg_to_display(
-						reply.value());
-			}
+		/* Jeżeli wiadomość jest poprawna, aktualizujemy stan gry. */
+		game_info.apply_changes_from_server(message.value());
 
-		} catch (IncompleteMessage &e) {
-			/* Jeżeli wiadomość nie jest kompletna, oczekujemy reszty. */
-			std::cerr << "Message from server is incomplete: " << e.what()
-			          << std::endl;
-			return {};
-		} catch (InvalidMessage &e) {
-			/* Jeżeli wiadomość jest niepoprawna, ignorujemy ją. */
-			std::cerr << "Error: received message from server is not valid.\n";
-			exit_program(EXIT_FAILURE);
+		/* Na podstawie otrzymanego komunikatu, odpowiadamy GUI:
+		 * Turn: wysyłamy Game
+		 * AcceptedPlayer, GameEnded, Hello: wysyłamy Lobby
+		 * GameStarted: nie wysyłamy nic */
+		auto reply = prepare_msg_to_gui(message.value().type);
+		if (reply.has_value()) {
+			return server_to_gui_buffer.insert_msg_to_display(
+					reply.value());
 		}
 
-	} else if (received_length == 0) {
-		/* Jeżeli rozmiar otrzymanej wiadomości wynosi 0, rozłączamy się
-		 * i kończymy działanie programu. */
-		std::cerr << "Connection suddenly closed.\n";
-		exit_program(EXIT_FAILURE);
-	} else {
-		/* Jeżeli rozmiar otrzymanej wiadomości jest niepoprawny,
-		 * rozłączamy się i kończymy działanie programu. */
+	} catch (IncompleteMessage &e) {
+		/* Jeżeli wiadomość nie jest kompletna, oczekujemy reszty. */
+		std::cerr << "Message from server is incomplete: " << e.what()
+		          << std::endl;
+		return {};
+	} catch (InvalidMessage &e) {
+		/* Jeżeli wiadomość jest niepoprawna, ignorujemy ją. */
 		std::cerr << "Error: received message from server is not valid.\n";
 		exit_program(EXIT_FAILURE);
 	}
+
+
 	return {};
 }
 
@@ -217,14 +209,16 @@ void Client::do_receive_from_server() {
 
 	/* Odbieramy wiadomość z serwera. */
 	server_socket.value().async_receive(
-			boost::asio::buffer(server_to_gui_buffer.get_receive(), BUFFER_SIZE),
+			boost::asio::buffer(server_to_gui_buffer.get_receive(),
+			                    BUFFER_SIZE),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec) {
 
 					std::cerr << "Otrzymany pakiet:" << std::endl;
 					for (size_t i = 0; i < length; i++) {
-						std::cerr << (int) server_to_gui_buffer.get_receive()[i] << " | ";
+						std::cerr << (int) server_to_gui_buffer.get_receive()[i]
+						          << " | ";
 					}
 					std::cerr << std::endl;
 
@@ -264,7 +258,7 @@ void Client::do_send_gui(size_t send_length) {
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec && length > 0) {
-					do_receive_from_server();
+					do_handle_server();
 				} else {
 					/* W przypadku błędu z połączeniem wypisujemy błąd
 					* i kończymy działanie programu. */

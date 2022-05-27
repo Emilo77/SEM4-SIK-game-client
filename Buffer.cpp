@@ -510,15 +510,14 @@ Buffer::receive_msg_from_server(size_t received_size) {
 		}
 
 	} catch (IncompleteMessage &e) {
-		set_shift(shift_index + received_size);
+		set_shift(end_of_data_index);
 		throw e;
 	}
 
-	size_t difference = end_of_data_index - get_read_size();
-	set_shift(difference);
 	end_of_data_index -= get_read_size();
+	set_shift(end_of_data_index);
 
-	for (size_t i = 0; i < difference; i++) {
+	for (size_t i = 0; i < end_of_data_index; i++) {
 		receive_buffer[i] = receive_buffer[i + get_read_size()];
 	}
 
@@ -571,8 +570,4 @@ GuiMessageToClient Buffer::receive_msg_from_gui(size_t received_size) {
 		throw InvalidMessage();
 	}
 }
-
-
-
-
 

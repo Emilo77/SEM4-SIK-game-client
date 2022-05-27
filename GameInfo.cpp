@@ -107,6 +107,7 @@ void GameInfo::apply_AcceptedPlayer(struct AcceptedPlayer &message) {
 
 void GameInfo::apply_GameStarted(struct GameStarted &message) {
 	/* Zmieniamy stan na Gameplay. */
+	board.reset(size_x, size_y);
 	change_game_state(GameState::GameplayState);
 	players = message.players;
 	/* Aktualizujemy kontenery na podstawie otrzymanej listy graczy. */
