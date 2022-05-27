@@ -55,23 +55,24 @@ void Client::initialize() {
 
 std::optional<size_t> Client::handle_gui_message() {
 	/* Wyciągamy i przetwarzamy wiadomość z bufora. */
-	auto message = gui_to_server_buffer.receive_msg_from_gui(
-			(size_t) received_length);
+	try {
+		GuiMessageToClient message = gui_to_server_buffer.receive_msg_from_gui(
+				(size_t) received_length);
 
-	/* Jeżeli wiadomość od gui jest poprawna, przekazujemy dalej do serwera. */
-	if (message.has_value()) {
 		/* Na podstawie otrzymanej wiadomości, tworzymy nową wiadomość
 		 * do serwera, tę wiadomość wstawiamy do bufora. */
-		ClientMessageToServer reply = prepare_msg_to_server(message.value());
+		ClientMessageToServer reply = prepare_msg_to_server(message);
 		return gui_to_server_buffer.insert_msg_to_server(reply);
-	}
 
-/* Jeżeli wiadomość od0 GUI przyszła w niepoprawnym formacie, ignorujemy ją. */
-	return {};
+	} catch (InvalidMessage &e) {
+		/* Jeżeli wiadomość od GUI przyszła w niepoprawnym formacie, ignorujemy ją. */
+		std::cerr << "Invalid message received from GUI. Ignoring." << "\n";
+		return {};
+	}
 }
 
 ClientMessageToServer
-Client::prepare_msg_to_server(DisplayMessageToClient &message) {
+Client::prepare_msg_to_server(GuiMessageToClient &message) {
 	ClientMessageToServer new_message;
 
 	/* Sprawdzamy, czy gra jest w stanie Lobby, czy Gameplay.
@@ -80,13 +81,13 @@ Client::prepare_msg_to_server(DisplayMessageToClient &message) {
 	 * Jeżeli w stanie Lobby, zawsze tworzymy komunikat Join. */
 	if (game_info.is_gameplay()) {
 		switch (message.type) {
-			case PlaceBombDisplay:
+			case PlaceBombGui:
 				new_message.type = ClientMessageToServerType::PlaceBombServer;
 				break;
-			case PlaceBlockDisplay:
+			case PlaceBlockGui:
 				new_message.type = ClientMessageToServerType::PlaceBlockServer;
 				break;
-			case MoveDisplay:
+			case MoveGui:
 				new_message.type = ClientMessageToServerType::MoveServer;
 				new_message.data = message.direction;
 		}
@@ -150,9 +151,11 @@ void Client::do_send_server(size_t send_length) {
 std::optional<size_t> Client::handle_message_from_server() {
 	if (received_length > 0) {
 		/* Wyciągamy i przetwarzamy wiadomość z bufora. */
-		auto message = server_to_gui_buffer.receive_msg_from_server(
-				received_length);
-		if (message.has_value()) {
+		std::optional<ServerMessageToClient> message;
+		try {
+			message = server_to_gui_buffer.receive_msg_from_server(
+					received_length);
+
 			/* Jeżeli wiadomość jest poprawna, aktualizujemy stan gry. */
 			game_info.apply_changes_from_server(message.value());
 
@@ -165,10 +168,18 @@ std::optional<size_t> Client::handle_message_from_server() {
 				return server_to_gui_buffer.insert_msg_to_display(
 						reply.value());
 			}
-		} else {
-			/* Jeżeli wiadomość nie doszła cała, oczekujemy na kolejne pakiety. */
-			do_receive_from_server();
+
+		} catch (IncompleteMessage &e) {
+			/* Jeżeli wiadomość nie jest kompletna, oczekujemy reszty. */
+			std::cerr << "Message from server is incomplete: " << e.what()
+			          << std::endl;
+			return {};
+		} catch (InvalidMessage &e) {
+			/* Jeżeli wiadomość jest niepoprawna, ignorujemy ją. */
+			std::cerr << "Error: received message from server is not valid.\n";
+			exit_program(EXIT_FAILURE);
 		}
+
 	} else if (received_length == 0) {
 		/* Jeżeli rozmiar otrzymanej wiadomości wynosi 0, rozłączamy się
 		 * i kończymy działanie programu. */
@@ -210,19 +221,19 @@ void Client::do_receive_from_server() {
 	server_socket.value().async_receive(
 			boost::asio::buffer(server_to_gui_buffer.get(), BUFFER_SIZE),
 			[this](boost::system::error_code ec,
-			                     std::size_t length) {
+			       std::size_t length) {
 				if (!ec) {
 
 					std::cerr << "Otrzymany pakiet:" << std::endl;
-					for(size_t i = 0; i < length; i++) {
+					for (size_t i = 0; i < length; i++) {
 						std::cerr << (int) server_to_gui_buffer.get()[i] << " | ";
 					}
 					std::cerr << std::endl;
 
 					received_length = length;
 //					server_to_gui_buffer.shift(temp_buffer, length);
-
-					std::cerr <<  "Stan buffera po wpisaniu pakietu: " << std::endl;
+					std::cerr << "Stan buffera po wpisaniu pakietu: "
+					          << std::endl;
 					server_to_gui_buffer.print(50);
 
 					do_handle_server();

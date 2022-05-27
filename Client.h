@@ -58,7 +58,7 @@ private:
 
 	/* Przygotowanie wiadomości do wysłania */
 	ClientMessageToServer
-	prepare_msg_to_server(DisplayMessageToClient &message);
+	prepare_msg_to_server(GuiMessageToClient &message);
 
 	/* Wysłanie wiadomości do serwera */
 	void do_send_server(size_t send_length);

@@ -1,10 +1,28 @@
 #include "Buffer.h"
 
-static bool invalid_direction(uint8_t direction) { return direction > 3; }
+static void check_direction(uint8_t direction) {
+	if (direction > Direction::Left) {
+		throw InvalidMessage();
+	}
+}
 
-static bool invalid_server_message_type(uint8_t type) { return type > 4; }
+static void check_gui_message_type(uint8_t type) {
+	if (type > GuiMessageToClientType::MoveGui) {
+		throw InvalidMessage();
+	}
+}
 
-static bool invalid_gui_message_type(uint8_t type) { return type > 2; }
+static void check_server_message_type(uint8_t type) {
+	if (type > ServerMessageToClientType::GameEnded) {
+		throw InvalidMessage();
+	}
+}
+
+void Buffer::check_if_message_incomplete(size_t variable) const {
+	if (read_index + variable > end_of_data_index) {
+		throw IncompleteMessage();
+	}
+}
 
 uint16_t Buffer::convert_to_send(uint16_t number) { return htobe16(number); }
 
@@ -96,146 +114,231 @@ void Buffer::insert_map_positions(std::map<player_id_t, Position> &positions) {
 }
 
 void Buffer::receive_raw(string &str, size_t str_size) {
-	str = {&buffer[read_index], str_size};
-	read_index += str_size;
+	try {
+		check_if_message_incomplete(str_size);
+		str = {&buffer[read_index], str_size};
+		read_index += str_size;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 void Buffer::receive(uint8_t &number) {
-	size_t size = sizeof(number);
-	memcpy(&number, &buffer[read_index], size);
-	read_index += size;
+	try {
+		size_t size = sizeof(number);
+		check_if_message_incomplete(size);
+		memcpy(&number, &buffer[read_index], size);
+		read_index += size;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 void Buffer::receive(uint16_t &number) {
-	size_t size = sizeof(number);
-	memcpy(&number, &buffer[read_index], size);
-	read_index += size;
-	number = convert_to_receive(number);
+	try {
+		size_t size = sizeof(number);
+		check_if_message_incomplete(size);
+		memcpy(&number, &buffer[read_index], size);
+		read_index += size;
+		number = convert_to_receive(number);
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 void Buffer::receive(uint32_t &number) {
-	size_t size = sizeof(number);
-	memcpy(&number, &buffer[read_index], size);
-	read_index += size;
-	number = convert_to_receive(number);
+	try {
+		size_t size = sizeof(number);
+		check_if_message_incomplete(size);
+		memcpy(&number, &buffer[read_index], size);
+		read_index += size;
+		number = convert_to_receive(number);
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 void Buffer::receive(string &str) {
-	uint8_t string_size = 0;
-	receive(string_size);
-	receive_raw(str, string_size);
+	try {
+		uint8_t string_size = 0;
+		receive(string_size);
+		receive_raw(str, string_size);
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 void Buffer::receive(Position &position) {
-	receive(position.x);
-	receive(position.y);
+	try {
+		receive(position.x);
+		receive(position.y);
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 void Buffer::receive(Player &player) {
-	receive(player.name);
-	receive(player.address);
+	try {
+		receive(player.name);
+		receive(player.address);
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 struct BombPlaced Buffer::receive_bomb_placed() {
-	struct BombPlaced event_content;
-	receive(event_content.bomb_id);
-	receive(event_content.position);
-	return event_content;
+	try {
+		struct BombPlaced event_content;
+		receive(event_content.bomb_id);
+		receive(event_content.position);
+		return event_content;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 struct BombExploded Buffer::receive_bomb_exploded() {
-	struct BombExploded event_content;
-	receive(event_content.bomb_id);
-	receive_list_player_ids(event_content.robots_destroyed);
-	receive_list_positions(event_content.blocks_destroyed);
+	try {
+		struct BombExploded event_content;
+		receive(event_content.bomb_id);
+		receive_list_player_ids(event_content.robots_destroyed);
+		receive_list_positions(event_content.blocks_destroyed);
+		return event_content;
 
-	return event_content;
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
+
 }
 
 struct PlayerMoved Buffer::receive_player_moved() {
-	struct PlayerMoved event_content;
-	receive(event_content.player_id);
-	receive(event_content.position);
-	return event_content;
+	try {
+		struct PlayerMoved event_content;
+		receive(event_content.player_id);
+		receive(event_content.position);
+		return event_content;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 struct BlockPlaced Buffer::receive_block_placed() {
-	struct BlockPlaced event_content;
-	receive(event_content.position);
-	return event_content;
+	try {
+		struct BlockPlaced event_content;
+		receive(event_content.position);
+		return event_content;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
+
 }
 
 Event Buffer::receive_event() {
-	uint8_t type;
-	receive(type);
-	std::variant<struct BombPlaced, struct BombExploded,
-			struct PlayerMoved, struct BlockPlaced> data;
-	switch ((EventType) type) {
-		case BombPlaced:
-			data = receive_bomb_placed();
-			break;
-		case BombExploded:
-			data = receive_bomb_exploded();
-			break;
-		case PlayerMoved:
-			data = receive_player_moved();
-			break;
-		case BlockPlaced:
-			data = receive_block_placed();
-			break;
+	try {
+		uint8_t type;
+		receive(type);
+		std::variant<struct BombPlaced, struct BombExploded,
+				struct PlayerMoved, struct BlockPlaced> data;
+		switch ((EventType) type) {
+			case BombPlaced:
+				data = receive_bomb_placed();
+				break;
+			case BombExploded:
+				data = receive_bomb_exploded();
+				break;
+			case PlayerMoved:
+				data = receive_player_moved();
+				break;
+			case BlockPlaced:
+				data = receive_block_placed();
+				break;
+		}
+		return Event((EventType) type, data);
+
+	} catch (IncompleteMessage &e) {
+		throw e;
 	}
-	return Event((EventType) type, data);
 }
 
 void Buffer::receive_list_events(std::vector<Event> &vector) {
-	uint32_t vector_size;
-	receive(vector_size);
-	for (uint32_t i = 0; i < vector_size; ++i) {
-		vector.push_back(receive_event());
+	try {
+		uint32_t vector_size;
+		receive(vector_size);
+		for (uint32_t i = 0; i < vector_size; ++i) {
+			vector.push_back(receive_event());
+		}
+	} catch (IncompleteMessage &e) {
+		throw e;
 	}
 }
 
 void Buffer::receive_list_player_ids(std::vector<player_id_t> &ids) {
-	uint32_t vector_size;
-	receive(vector_size);
-	for (uint32_t i = 0; i < vector_size; ++i) {
-		player_id_t id;
-		receive(id);
-		ids.push_back(id);
+	try {
+		uint32_t vector_size;
+		receive(vector_size);
+		for (uint32_t i = 0; i < vector_size; ++i) {
+			player_id_t id;
+			receive(id);
+			ids.push_back(id);
+		}
+	} catch (IncompleteMessage &e) {
+		throw e;
 	}
 }
 
 void Buffer::receive_list_positions(std::vector<Position> &positions) {
-	uint32_t vector_size;
-	receive(vector_size);
-	for (uint32_t i = 0; i < vector_size; ++i) {
-		Position position;
-		receive(position);
-		positions.push_back(position);
+	try {
+		uint32_t vector_size;
+		receive(vector_size);
+		for (uint32_t i = 0; i < vector_size; ++i) {
+			Position position;
+			receive(position);
+			positions.push_back(position);
+		}
+	} catch (IncompleteMessage &e) {
+		throw e;
 	}
 }
 
 void Buffer::receive_map_players(std::map<player_id_t, Player> &players) {
-	uint32_t map_size;
-	receive(map_size);
-	for (uint32_t i = 0; i < map_size; ++i) {
-		player_id_t id;
-		Player player;
-		receive(id);
-		receive(player);
-		players.insert_or_assign(id, player);
+	try {
+		uint32_t map_size;
+		receive(map_size);
+		for (uint32_t i = 0; i < map_size; ++i) {
+			player_id_t id;
+			Player player;
+			receive(id);
+			receive(player);
+			players.insert_or_assign(id, player);
+		}
+	} catch (IncompleteMessage &e) {
+		throw e;
 	}
 }
 
 void Buffer::receive_map_scores(std::map<player_id_t, score_t> &scores) {
-	uint32_t map_size;
-	receive(map_size);
-	for (uint32_t i = 0; i < map_size; ++i) {
-		player_id_t id;
-		score_t score;
-		receive(id);
-		receive(score);
-		scores.insert_or_assign(id, score);
+	try {
+		uint32_t map_size;
+		receive(map_size);
+		for (uint32_t i = 0; i < map_size; ++i) {
+			player_id_t id;
+			score_t score;
+			receive(id);
+			receive(score);
+			scores.insert_or_assign(id, score);
+		}
+	} catch (IncompleteMessage &e) {
+		throw e;
 	}
 }
 
@@ -258,41 +361,66 @@ void Buffer::insert_move(Direction direction) {
 }
 
 struct Hello Buffer::receive_hello() {
-	struct Hello hello;
-	receive(hello.server_name);
-	receive(hello.players_count);
-	receive(hello.size_x);
-	receive(hello.size_y);
-	receive(hello.game_length);
-	receive(hello.explosion_radius);
-	receive(hello.bomb_timer);
-	return hello;
+	try {
+		struct Hello hello;
+		receive(hello.server_name);
+		receive(hello.players_count);
+		receive(hello.size_x);
+		receive(hello.size_y);
+		receive(hello.game_length);
+		receive(hello.explosion_radius);
+		receive(hello.bomb_timer);
+		return hello;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 struct AcceptedPlayer Buffer::receive_accepted_player() {
-	struct AcceptedPlayer accepted_player;
-	receive(accepted_player.player_id);
-	receive(accepted_player.player);
-	return accepted_player;
+	try {
+		struct AcceptedPlayer accepted_player;
+		receive(accepted_player.player_id);
+		receive(accepted_player.player);
+		return accepted_player;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 struct GameStarted Buffer::receive_game_started() {
-	struct GameStarted game_started;
-	receive_map_players(game_started.players);
-	return game_started;
+	try {
+		struct GameStarted game_started;
+		receive_map_players(game_started.players);
+		return game_started;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 struct Turn Buffer::receive_turn() {
-	struct Turn turn;
-	receive(turn.turn_number);
-	receive_list_events(turn.events);
-	return turn;
+	try {
+		struct Turn turn;
+		receive(turn.turn_number);
+		receive_list_events(turn.events);
+		return turn;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 struct GameEnded Buffer::receive_game_ended() {
-	struct GameEnded game_ended;
-	receive_map_scores(game_ended.scores);
-	return game_ended;
+	try {
+		struct GameEnded game_ended;
+		receive_map_scores(game_ended.scores);
+		return game_ended;
+
+	} catch (IncompleteMessage &e) {
+		throw e;
+	}
 }
 
 void Buffer::send_lobby(Lobby &message) {
@@ -347,48 +475,52 @@ size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 
 std::optional<ServerMessageToClient>
 Buffer::receive_msg_from_server(size_t received_size) {
+	end_of_data_index = shift_index + received_size;
 	reset_read_index();
 	auto serverMessage = std::optional<ServerMessageToClient>();
 	uint8_t message;
-	receive(message);
 	std::variant<struct Hello, struct AcceptedPlayer,
 			struct GameStarted, struct Turn, struct GameEnded> data;
-	switch ((ServerMessageToClientType) message) {
-		case Hello:
-			data = receive_hello();
-			serverMessage.emplace(ServerMessageToClientType::Hello, data);
-			break;
-		case AcceptedPlayer:
-			data = receive_accepted_player();
-			serverMessage.emplace(ServerMessageToClientType::AcceptedPlayer,
-			                      data);
-			break;
-		case GameStarted:
-			data = receive_game_started();
-			serverMessage.emplace(ServerMessageToClientType::GameStarted, data);
-			break;
-		case Turn:
-			data = receive_turn();
-			serverMessage.emplace(ServerMessageToClientType::Turn, data);
-			break;
-		case GameEnded:
-			data = receive_game_ended();
-			serverMessage.emplace(ServerMessageToClientType::GameEnded, data);
-			break;
+
+	try {
+		receive(message);
+		check_server_message_type(message);
+
+		switch ((ServerMessageToClientType) message) {
+			case Hello:
+				data = receive_hello();
+				serverMessage.emplace(Hello, data);
+				break;
+			case AcceptedPlayer:
+				data = receive_accepted_player();
+				serverMessage.emplace(AcceptedPlayer, data);
+				break;
+			case GameStarted:
+				data = receive_game_started();
+				serverMessage.emplace(GameStarted, data);
+				break;
+			case Turn:
+				data = receive_turn();
+				serverMessage.emplace(Turn, data);
+				break;
+			case GameEnded:
+				data = receive_game_ended();
+				serverMessage.emplace(GameEnded, data);
+				break;
+		}
+
+	} catch (IncompleteMessage &e) {
+		set_shift(shift_index + received_size);
+		throw e;
 	}
-//	if (get_read_size() > shift_index + received_size) {
-//		std::cerr << "Wiadomość została przesłana niepełna.\n";
-//		set_shift(shift_index + received_size);
-//		return {};
-//	} else {
-//		std::cerr << "Wiadomość jest cała.\n";
-//		size_t difference = get_shift() + received_size - get_read_size();
-//		set_shift(difference);
-//
-//		for(size_t i = 0; i < difference; i++) {
-//			buffer[i] = buffer[i + get_read_size()];
-//		}
-//	}
+
+	size_t difference = get_shift() + received_size - get_read_size();
+	set_shift(difference);
+
+	for (size_t i = 0; i < difference; i++) {
+		buffer[i] = buffer[i + get_read_size()];
+	}
+
 	return serverMessage;
 }
 
@@ -405,34 +537,39 @@ size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {
 	return get_send_size();
 }
 
-std::optional<DisplayMessageToClient>
-Buffer::receive_msg_from_gui(size_t expected_size) {
-	auto message = std::optional<DisplayMessageToClient>();
+GuiMessageToClient Buffer::receive_msg_from_gui(size_t received_size) {
+	end_of_data_index = shift_index + received_size;
 	reset_read_index();
 
+	auto message = std::optional<GuiMessageToClient>();
 	uint8_t message_type;
 	uint8_t direction;
 
-	receive(message_type);
+	try {
+		receive(message_type);
+		check_gui_message_type(message_type);
+		if (message_type == GuiMessageToClientType::MoveGui) {
+			receive(direction);
+			check_direction(direction);
 
-	if (message_type == DisplayMessageToClientType::MoveDisplay) {
-		receive(direction);
-		if (invalid_direction(direction)) {
-			return {};
+			return {(GuiMessageToClientType) message_type,
+			                          static_cast<Direction>(direction)};
 		}
 
-		message.emplace((DisplayMessageToClientType) message_type,
-		                static_cast<Direction>(direction));
-		return message;
-	}
+		if (get_read_size() != received_size) {
+			throw InvalidMessage();
+		}
 
-	if (invalid_gui_message_type(message_type) ||
-	    get_read_size() != expected_size) {
-		return {};
-	}
+		std:: cerr << "Poprawna wiadomość GUI" << std::endl;
+		return GuiMessageToClient((GuiMessageToClientType) message_type);
 
-	message.emplace((DisplayMessageToClientType) message_type);
-	return message;
+	} catch (InvalidMessage &e) {
+		std:: cerr << "Złapało wyjątek " << std::endl;
+		throw e;
+	}
 }
+
+
+
 
 

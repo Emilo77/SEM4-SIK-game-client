@@ -13,7 +13,7 @@
 
 using std::string;
 
-struct IncorrectMessage: public std::exception {
+struct InvalidMessage: public std::exception {
 	[[nodiscard]] const char *what() const noexcept override {
 		return "Incorrect message";
 	}
@@ -27,6 +27,9 @@ struct IncompleteMessage : public std::exception {
 
 class Buffer {
 private:
+	/* Sprawdzenie, czy wiadomość przyszła niepełna */
+	void check_if_message_incomplete(size_t variable) const;
+
 	/* Konwertowanie liczby przed wysłaniem wiadomości */
 	static uint16_t convert_to_send(uint16_t number);
 
@@ -165,17 +168,10 @@ public:
 	size_t insert_msg_to_display(ClientMessageToDisplay &drawMessage);
 
 	/* Odbieranie wiadomości wysyłanej od gui */
-	std::optional<DisplayMessageToClient>
-	receive_msg_from_gui(size_t expected_size);
-
-	void shift(std::vector<char> &temp, size_t size) {
-		for(size_t i = 0; i < size; i++) {
-			buffer[i + shift_index] = temp[i];
-		}
-	}
+	GuiMessageToClient receive_msg_from_gui(size_t expected_size);
 
 	/* Referencja do bufora */
-	std::vector<char> &get() { return buffer; }
+	char *get() { return &buffer[shift_index]; }
 
 	void print(size_t size) {
 		std::cerr << "size: " << size << std::endl;

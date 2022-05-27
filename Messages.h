@@ -24,10 +24,10 @@ enum ServerMessageToClientType {
 };
 
 /* Typ wiadomości wysyłanej od GUI do klienta. */
-enum DisplayMessageToClientType {
-	PlaceBombDisplay = 0,
-	PlaceBlockDisplay = 1,
-	MoveDisplay = 2,
+enum GuiMessageToClientType {
+	PlaceBombGui = 0,
+	PlaceBlockGui = 1,
+	MoveGui = 2,
 };
 
 /* Wiadomość Hello */
@@ -139,18 +139,18 @@ typedef struct ServerMessageToClient {
 
 
 /* Struktura wiadomości wysyłanej od GUI do klienta. */
-typedef struct DisplayMessageToClient {
-	DisplayMessageToClientType type;
+typedef struct GuiMessageToClient {
+	GuiMessageToClientType type;
 	Direction direction;
 
-	DisplayMessageToClient(DisplayMessageToClientType type, Direction direction)
+	GuiMessageToClient(GuiMessageToClientType type, Direction direction)
 			: type(type) {
 		this->direction = direction;
 	}
 
-	explicit DisplayMessageToClient(DisplayMessageToClientType type)
+	explicit GuiMessageToClient(GuiMessageToClientType type)
 			: type(type), direction() {}
-} DisplayMessageToClient;
+} GuiMessageToClient;
 
 
 /* Struktura wiadomości wysyłanej od klienta do serwera. */
