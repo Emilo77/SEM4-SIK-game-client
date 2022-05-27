@@ -85,7 +85,8 @@ private:
 	size_t received_length{0};
 	ClientParameters parameters;
 	GameInfo game_info;
-	Buffer buffer;
+	Buffer gui_to_server_buffer;
+	Buffer server_to_gui_buffer;
 	boost::asio::io_context io_context;
 	std::optional<udp::socket> gui_socket;
 	std::optional<tcp::socket> server_socket;

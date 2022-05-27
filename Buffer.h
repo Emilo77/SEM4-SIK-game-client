@@ -9,7 +9,21 @@
 #include <cstring>
 #include <optional>
 
+#include <exception>
+
 using std::string;
+
+struct IncorrectMessage: public std::exception {
+	[[nodiscard]] const char *what() const noexcept override {
+		return "Incorrect message";
+	}
+};
+
+struct IncompleteMessage : public std::exception {
+	[[nodiscard]] const char *what() const noexcept override {
+		return "Incomplete message";
+	}
+};
 
 class Buffer {
 private:
@@ -119,9 +133,6 @@ private:
 
 	void send_game(GamePlay &message);
 
-
-
-public:
 	/* Przywrócenie indeksu przed odbieraniem nowej wiadomości */
 	void reset_read_index() { read_index = 0; }
 
@@ -129,8 +140,20 @@ public:
 	void reset_send_index() { send_index = 0; }
 
 	/* Przywrócenie indeksu przed wysyłaniem nowej wiadomości */
-	void set_shift(size_t value) { send_index = value; }
+	void set_shift(size_t value) { shift_index = value; }
 
+	/* Zwrócenie wielkości zapisanej wiadomości do bufora */
+	[[nodiscard]] size_t get_send_size() const { return send_index; }
+
+	/* Zwrócenie wielkości odebranej wiadomości z bufora */
+	[[nodiscard]] size_t get_read_size() const { return read_index; }
+
+	/* Zwrócenie wielkości odebranej wiadomości z bufora */
+	[[nodiscard]] size_t get_shift() const { return shift_index; }
+
+public:
+
+	void initialize();
 	/* Wstawianie wiadomości wysyłanej do serwera */
 	size_t insert_msg_to_server(ClientMessageToServer &message);
 
@@ -145,17 +168,14 @@ public:
 	std::optional<DisplayMessageToClient>
 	receive_msg_from_gui(size_t expected_size);
 
-	/* Zwrócenie wielkości zapisanej wiadomości do bufora */
-	[[nodiscard]] size_t get_send_size() const { return send_index; }
+	void shift(std::vector<char> &temp, size_t size) {
+		for(size_t i = 0; i < size; i++) {
+			buffer[i + shift_index] = temp[i];
+		}
+	}
 
-	/* Zwrócenie wielkości odebranej wiadomości z bufora */
-	[[nodiscard]] size_t get_read_size() const { return read_index; }
-
-	/* Zwrócenie wielkości odebranej wiadomości z bufora */
-	[[nodiscard]] size_t get_shift() const { return shift_index; }
-
-	/* Wskaźnik na bufor */
-	char *get() { return buffer; }
+	/* Referencja do bufora */
+	std::vector<char> &get() { return buffer; }
 
 	void print(size_t size) {
 		std::cerr << "size: " << size << std::endl;
@@ -166,10 +186,11 @@ public:
 	}
 
 private:
-	char buffer[BUFFER_SIZE]{};
+	std::vector<char> buffer;
 	size_t send_index{0};
 	size_t read_index{0};
 	size_t shift_index{0};
+	size_t end_of_data_index{0};
 };
 
 

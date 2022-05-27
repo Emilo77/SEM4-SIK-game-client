@@ -16,24 +16,24 @@ uint32_t Buffer::convert_to_receive(uint32_t number) { return be32toh(number); }
 
 void Buffer::insert_raw(const string &str) {
 	size_t size = str.size();
-	memcpy(buffer + send_index, str.c_str(), size);
+	memcpy(&buffer[send_index], str.c_str(), size);
 	send_index += size;
 }
 
 void Buffer::insert(uint8_t number) {
-	memcpy(buffer + send_index, &number, sizeof(number));
+	memcpy(&buffer[send_index], &number, sizeof(number));
 	send_index += sizeof(number);
 }
 
 void Buffer::insert(uint16_t number) {
 	number = convert_to_send(number);
-	memcpy(buffer + send_index, &number, sizeof(number));
+	memcpy(&buffer[send_index], &number, sizeof(number));
 	send_index += sizeof(number);
 }
 
 void Buffer::insert(uint32_t number) {
 	number = convert_to_send(number);
-	memcpy(buffer + send_index, &number, sizeof(number));
+	memcpy(&buffer[send_index], &number, sizeof(number));
 	send_index += sizeof(number);
 }
 
@@ -96,26 +96,26 @@ void Buffer::insert_map_positions(std::map<player_id_t, Position> &positions) {
 }
 
 void Buffer::receive_raw(string &str, size_t str_size) {
-	str = {buffer + read_index, str_size};
+	str = {&buffer[read_index], str_size};
 	read_index += str_size;
 }
 
 void Buffer::receive(uint8_t &number) {
 	size_t size = sizeof(number);
-	memcpy(&number, buffer + read_index, size);
+	memcpy(&number, &buffer[read_index], size);
 	read_index += size;
 }
 
 void Buffer::receive(uint16_t &number) {
 	size_t size = sizeof(number);
-	memcpy(&number, buffer + read_index, size);
+	memcpy(&number, &buffer[read_index], size);
 	read_index += size;
 	number = convert_to_receive(number);
 }
 
 void Buffer::receive(uint32_t &number) {
 	size_t size = sizeof(number);
-	memcpy(&number, buffer + read_index, size);
+	memcpy(&number, &buffer[read_index], size);
 	read_index += size;
 	number = convert_to_receive(number);
 }
@@ -223,7 +223,7 @@ void Buffer::receive_map_players(std::map<player_id_t, Player> &players) {
 		Player player;
 		receive(id);
 		receive(player);
-		players.insert({id, player});
+		players.insert_or_assign(id, player);
 	}
 }
 
@@ -235,7 +235,7 @@ void Buffer::receive_map_scores(std::map<player_id_t, score_t> &scores) {
 		score_t score;
 		receive(id);
 		receive(score);
-		scores.insert({id, score});
+		scores.insert_or_assign(id, score);
 	}
 }
 
@@ -322,6 +322,9 @@ void Buffer::send_game(GamePlay &message) {
 	insert_map_scores(message.scores);
 }
 
+void Buffer::initialize() {
+	buffer.resize(BUFFER_SIZE, 0);
+}
 
 size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 	reset_send_index();
@@ -373,20 +376,20 @@ Buffer::receive_msg_from_server(size_t received_size) {
 			serverMessage.emplace(ServerMessageToClientType::GameEnded, data);
 			break;
 	}
-	if (get_read_size() > shift_index + received_size) {
-		std::cerr << "Wiadomość została przesłana niepełna.\n";
-		set_shift(shift_index + received_size);
-		return {};
-	} else {
-		size_t difference = get_shift() + received_size - get_read_size();
-		set_shift(difference);
-
-		memcpy(buffer, buffer + get_read_size(),difference);
-
-
-		return serverMessage;
-
-	}
+//	if (get_read_size() > shift_index + received_size) {
+//		std::cerr << "Wiadomość została przesłana niepełna.\n";
+//		set_shift(shift_index + received_size);
+//		return {};
+//	} else {
+//		std::cerr << "Wiadomość jest cała.\n";
+//		size_t difference = get_shift() + received_size - get_read_size();
+//		set_shift(difference);
+//
+//		for(size_t i = 0; i < difference; i++) {
+//			buffer[i] = buffer[i + get_read_size()];
+//		}
+//	}
+	return serverMessage;
 }
 
 size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {

@@ -137,7 +137,7 @@ void GameInfo::apply_GameEnded(struct GameEnded &message) {
 }
 
 void GameInfo::apply_BombPlaced(struct BombPlaced &data) {
-	bombs.insert({data.bomb_id, Bomb( data.position, bomb_timer)});
+	bombs.insert_or_assign(data.bomb_id, Bomb( data.position, bomb_timer));
 }
 
 void GameInfo::apply_BombExploded(struct BombExploded &data) {

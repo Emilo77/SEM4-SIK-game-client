@@ -15,6 +15,8 @@ void Client::exit_program(int status) {
 
 
 void Client::initialize() {
+	server_to_gui_buffer.initialize();
+	gui_to_server_buffer.initialize();
 	try {
 		/* Wyznaczamy endpointy GUI na podstawie hosta i portu GUI. */
 		udp::resolver gui_resolver(io_context);
@@ -34,7 +36,8 @@ void Client::initialize() {
 		/* Gniazdo GUI będzie nasłuchiwać na porcie podanym w parametrach */
 		gui_socket.emplace(io_context,
 		                   udp::endpoint(udp::v6(), parameters.port));
-		std:: cerr << "GUI socket listening on port " << parameters.port << std::endl;
+		std::cerr << "GUI socket listening on port " << parameters.port
+		          << std::endl;
 		server_socket.emplace(io_context);
 
 		/* Łączymy gniazda z odpowiednimi endpointami */
@@ -52,14 +55,15 @@ void Client::initialize() {
 
 std::optional<size_t> Client::handle_gui_message() {
 	/* Wyciągamy i przetwarzamy wiadomość z bufora. */
-	auto message = buffer.receive_msg_from_gui((size_t) received_length);
+	auto message = gui_to_server_buffer.receive_msg_from_gui(
+			(size_t) received_length);
 
 	/* Jeżeli wiadomość od gui jest poprawna, przekazujemy dalej do serwera. */
 	if (message.has_value()) {
 		/* Na podstawie otrzymanej wiadomości, tworzymy nową wiadomość
 		 * do serwera, tę wiadomość wstawiamy do bufora. */
 		ClientMessageToServer reply = prepare_msg_to_server(message.value());
-		return buffer.insert_msg_to_server(reply);
+		return gui_to_server_buffer.insert_msg_to_server(reply);
 	}
 
 /* Jeżeli wiadomość od0 GUI przyszła w niepoprawnym formacie, ignorujemy ją. */
@@ -96,7 +100,7 @@ Client::prepare_msg_to_server(DisplayMessageToClient &message) {
 void Client::do_receive_from_gui() {
 	/* Odbieramy wiadomość od gui i wykonujemy kod w funkcji lambda. */
 	gui_socket.value().async_receive(
-			boost::asio::buffer(buffer.get(), BUFFER_SIZE),
+			boost::asio::buffer(gui_to_server_buffer.get(), BUFFER_SIZE),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec) {
@@ -128,7 +132,7 @@ void Client::do_handle_gui() {
 void Client::do_send_server(size_t send_length) {
 	/* Wysyłamy wiadomość do serwera. */
 	server_socket.value().async_send(
-			boost::asio::buffer(buffer.get(), send_length),
+			boost::asio::buffer(gui_to_server_buffer.get(), send_length),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec && length > 0) {
@@ -146,7 +150,8 @@ void Client::do_send_server(size_t send_length) {
 std::optional<size_t> Client::handle_message_from_server() {
 	if (received_length > 0) {
 		/* Wyciągamy i przetwarzamy wiadomość z bufora. */
-		auto message = buffer.receive_msg_from_server(received_length);
+		auto message = server_to_gui_buffer.receive_msg_from_server(
+				received_length);
 		if (message.has_value()) {
 			/* Jeżeli wiadomość jest poprawna, aktualizujemy stan gry. */
 			game_info.apply_changes_from_server(message.value());
@@ -157,7 +162,8 @@ std::optional<size_t> Client::handle_message_from_server() {
 			 * GameStarted: nie wysyłamy nic */
 			auto reply = prepare_msg_to_gui(message.value().type);
 			if (reply.has_value()) {
-				return buffer.insert_msg_to_display(reply.value());
+				return server_to_gui_buffer.insert_msg_to_display(
+						reply.value());
 			}
 		} else {
 			/* Jeżeli wiadomość nie doszła cała, oczekujemy na kolejne pakiety. */
@@ -197,15 +203,28 @@ Client::prepare_msg_to_gui(ServerMessageToClientType type) {
 }
 
 void Client::do_receive_from_server() {
-	char temp_buffer[BUFFER_SIZE];
+//	std::vector<char> temp_buffer;
+//	temp_buffer.resize(BUFFER_SIZE, 0);
+
 	/* Odbieramy wiadomość z serwera. */
 	server_socket.value().async_receive(
-			boost::asio::buffer(temp_buffer, BUFFER_SIZE),
-			[this, &temp_buffer](boost::system::error_code ec,
-			       std::size_t length) {
+			boost::asio::buffer(server_to_gui_buffer.get(), BUFFER_SIZE),
+			[this](boost::system::error_code ec,
+			                     std::size_t length) {
 				if (!ec) {
+
+					std::cerr << "Otrzymany pakiet:" << std::endl;
+					for(size_t i = 0; i < length; i++) {
+						std::cerr << (int) server_to_gui_buffer.get()[i] << " | ";
+					}
+					std::cerr << std::endl;
+
 					received_length = length;
-					memcpy(buffer.get() + buffer.get_shift(), temp_buffer, length);
+//					server_to_gui_buffer.shift(temp_buffer, length);
+
+					std::cerr <<  "Stan buffera po wpisaniu pakietu: " << std::endl;
+					server_to_gui_buffer.print(50);
+
 					do_handle_server();
 				} else {
 					/* W przypadku błędu z połączeniem wypisujemy błąd
@@ -232,7 +251,7 @@ void Client::do_handle_server() {
 void Client::do_send_gui(size_t send_length) {
 	/* Wysyłamy wiadomość do GUI. */
 	gui_socket.value().async_send_to(
-			boost::asio::buffer(buffer.get(), send_length),
+			boost::asio::buffer(server_to_gui_buffer.get(), send_length),
 			gui_endpoints.value(),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
