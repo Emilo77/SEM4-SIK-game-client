@@ -43,6 +43,9 @@ public:
 
 	/* Uruchomienie klienta. */
 	void run() {
+		if (debug) {
+			std::cerr << "Starting client." << std::endl;
+		}
 		signals.async_wait(handler);
 		do_receive_from_server();
 		do_receive_from_gui();

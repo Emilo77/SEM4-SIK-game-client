@@ -21,6 +21,9 @@ void Client::close_sockets() {
 
 
 void Client::initialize() {
+	if (debug) {
+		std:: cerr << "Initializing ..." << std::endl;
+	}
 	server_to_gui_buffer.initialize(MAX_PACKAGE_SIZE);
 	gui_to_server_buffer.initialize(SMALL_BUFFER_SIZE);
 	try {
@@ -292,7 +295,6 @@ Client::~Client() {
 
 
 int main(int argc, char *argv[]) {
-	std:: cerr << "Client started" << std::endl;
 	ClientParameters parameters(argc, argv);
 	Client client(parameters);
 	client.run();
