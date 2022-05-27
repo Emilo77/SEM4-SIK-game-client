@@ -170,23 +170,28 @@ public:
 	/* Odbieranie wiadomości wysyłanej od gui */
 	GuiMessageToClient receive_msg_from_gui(size_t expected_size);
 
-	/* Referencja do bufora */
-	char *get() { return &buffer[shift_index]; }
+	/* Referencja do bufora odbierającego komunikaty */
+	char *get_receive() { return &receive_buffer[shift_index]; }
+
+	/* Referencja do bufora wysyłającego komunikaty */
+	char *get_send() { return &send_buffer[0]; }
 
 	void print(size_t size) {
 		std::cerr << "size: " << size << std::endl;
 		for (size_t i = 0; i < size; i++) {
-			std::cerr << (int) buffer[i] << " | ";
+			std::cerr << (int) receive_buffer[i] << " | ";
 		}
 		std::cerr << std::endl;
 	}
 
 private:
-	std::vector<char> buffer;
+	std::vector<char> receive_buffer;
+	std::vector<char> send_buffer;
 	size_t send_index{0};
 	size_t read_index{0};
 	size_t shift_index{0};
 	size_t end_of_data_index{0};
+	size_t received{0};
 };
 
 

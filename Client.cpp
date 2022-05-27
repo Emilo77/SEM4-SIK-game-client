@@ -101,7 +101,7 @@ Client::prepare_msg_to_server(GuiMessageToClient &message) {
 void Client::do_receive_from_gui() {
 	/* Odbieramy wiadomość od gui i wykonujemy kod w funkcji lambda. */
 	gui_socket.value().async_receive(
-			boost::asio::buffer(gui_to_server_buffer.get(), BUFFER_SIZE),
+			boost::asio::buffer(gui_to_server_buffer.get_receive(), BUFFER_SIZE),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec) {
@@ -133,7 +133,7 @@ void Client::do_handle_gui() {
 void Client::do_send_server(size_t send_length) {
 	/* Wysyłamy wiadomość do serwera. */
 	server_socket.value().async_send(
-			boost::asio::buffer(gui_to_server_buffer.get(), send_length),
+			boost::asio::buffer(gui_to_server_buffer.get_send(), send_length),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec && length > 0) {
@@ -214,27 +214,24 @@ Client::prepare_msg_to_gui(ServerMessageToClientType type) {
 }
 
 void Client::do_receive_from_server() {
-//	std::vector<char> temp_buffer;
-//	temp_buffer.resize(BUFFER_SIZE, 0);
 
 	/* Odbieramy wiadomość z serwera. */
 	server_socket.value().async_receive(
-			boost::asio::buffer(server_to_gui_buffer.get(), BUFFER_SIZE),
+			boost::asio::buffer(server_to_gui_buffer.get_receive(), BUFFER_SIZE),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec) {
 
 					std::cerr << "Otrzymany pakiet:" << std::endl;
 					for (size_t i = 0; i < length; i++) {
-						std::cerr << (int) server_to_gui_buffer.get()[i] << " | ";
+						std::cerr << (int) server_to_gui_buffer.get_receive()[i] << " | ";
 					}
 					std::cerr << std::endl;
 
 					received_length = length;
-//					server_to_gui_buffer.shift(temp_buffer, length);
 					std::cerr << "Stan buffera po wpisaniu pakietu: "
 					          << std::endl;
-					server_to_gui_buffer.print(50);
+					server_to_gui_buffer.print(80);
 
 					do_handle_server();
 				} else {
@@ -262,7 +259,7 @@ void Client::do_handle_server() {
 void Client::do_send_gui(size_t send_length) {
 	/* Wysyłamy wiadomość do GUI. */
 	gui_socket.value().async_send_to(
-			boost::asio::buffer(server_to_gui_buffer.get(), send_length),
+			boost::asio::buffer(server_to_gui_buffer.get_send(), send_length),
 			gui_endpoints.value(),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {

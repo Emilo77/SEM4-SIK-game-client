@@ -34,24 +34,24 @@ uint32_t Buffer::convert_to_receive(uint32_t number) { return be32toh(number); }
 
 void Buffer::insert_raw(const string &str) {
 	size_t size = str.size();
-	memcpy(&buffer[send_index], str.c_str(), size);
+	memcpy(&send_buffer[send_index], str.c_str(), size);
 	send_index += size;
 }
 
 void Buffer::insert(uint8_t number) {
-	memcpy(&buffer[send_index], &number, sizeof(number));
+	memcpy(&send_buffer[send_index], &number, sizeof(number));
 	send_index += sizeof(number);
 }
 
 void Buffer::insert(uint16_t number) {
 	number = convert_to_send(number);
-	memcpy(&buffer[send_index], &number, sizeof(number));
+	memcpy(&send_buffer[send_index], &number, sizeof(number));
 	send_index += sizeof(number);
 }
 
 void Buffer::insert(uint32_t number) {
 	number = convert_to_send(number);
-	memcpy(&buffer[send_index], &number, sizeof(number));
+	memcpy(&send_buffer[send_index], &number, sizeof(number));
 	send_index += sizeof(number);
 }
 
@@ -116,7 +116,7 @@ void Buffer::insert_map_positions(std::map<player_id_t, Position> &positions) {
 void Buffer::receive_raw(string &str, size_t str_size) {
 	try {
 		check_if_message_incomplete(str_size);
-		str = {&buffer[read_index], str_size};
+		str = {&receive_buffer[read_index], str_size};
 		read_index += str_size;
 
 	} catch (IncompleteMessage &e) {
@@ -128,7 +128,7 @@ void Buffer::receive(uint8_t &number) {
 	try {
 		size_t size = sizeof(number);
 		check_if_message_incomplete(size);
-		memcpy(&number, &buffer[read_index], size);
+		memcpy(&number, &receive_buffer[read_index], size);
 		read_index += size;
 
 	} catch (IncompleteMessage &e) {
@@ -140,7 +140,7 @@ void Buffer::receive(uint16_t &number) {
 	try {
 		size_t size = sizeof(number);
 		check_if_message_incomplete(size);
-		memcpy(&number, &buffer[read_index], size);
+		memcpy(&number, &receive_buffer[read_index], size);
 		read_index += size;
 		number = convert_to_receive(number);
 
@@ -153,7 +153,7 @@ void Buffer::receive(uint32_t &number) {
 	try {
 		size_t size = sizeof(number);
 		check_if_message_incomplete(size);
-		memcpy(&number, &buffer[read_index], size);
+		memcpy(&number, &receive_buffer[read_index], size);
 		read_index += size;
 		number = convert_to_receive(number);
 
@@ -451,7 +451,8 @@ void Buffer::send_game(GamePlay &message) {
 }
 
 void Buffer::initialize() {
-	buffer.resize(BUFFER_SIZE, 0);
+	receive_buffer.resize(BUFFER_SIZE, 0);
+	send_buffer.resize(BUFFER_SIZE, 0);
 }
 
 size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
@@ -475,13 +476,12 @@ size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 
 std::optional<ServerMessageToClient>
 Buffer::receive_msg_from_server(size_t received_size) {
-	end_of_data_index = shift_index + received_size;
+	end_of_data_index += received_size;
 	reset_read_index();
 	auto serverMessage = std::optional<ServerMessageToClient>();
 	uint8_t message;
 	std::variant<struct Hello, struct AcceptedPlayer,
 			struct GameStarted, struct Turn, struct GameEnded> data;
-
 	try {
 		receive(message);
 		check_server_message_type(message);
@@ -514,11 +514,12 @@ Buffer::receive_msg_from_server(size_t received_size) {
 		throw e;
 	}
 
-	size_t difference = get_shift() + received_size - get_read_size();
+	size_t difference = end_of_data_index - get_read_size();
 	set_shift(difference);
+	end_of_data_index -= get_read_size();
 
 	for (size_t i = 0; i < difference; i++) {
-		buffer[i] = buffer[i + get_read_size()];
+		receive_buffer[i] = receive_buffer[i + get_read_size()];
 	}
 
 	return serverMessage;
@@ -538,7 +539,7 @@ size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {
 }
 
 GuiMessageToClient Buffer::receive_msg_from_gui(size_t received_size) {
-	end_of_data_index = shift_index + received_size;
+	end_of_data_index = BUFFER_SIZE;
 	reset_read_index();
 
 	auto message = std::optional<GuiMessageToClient>();
@@ -566,6 +567,8 @@ GuiMessageToClient Buffer::receive_msg_from_gui(size_t received_size) {
 	} catch (InvalidMessage &e) {
 		std:: cerr << "Złapało wyjątek " << std::endl;
 		throw e;
+	} catch (IncompleteMessage &e) {
+		throw InvalidMessage();
 	}
 }
 
