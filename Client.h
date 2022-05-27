@@ -12,16 +12,25 @@
 using boost::asio::ip::tcp;
 using boost::asio::ip::udp;
 
+#ifdef NDEBUG
+const bool debug = false;
+#else
+const bool debug = true;
+#endif
+
 /* Obsługa sygnałów */
 static void handler(const boost::system::error_code &error, int signal_number) {
 	if (error) {
-		std::cerr << "Error while handling signal: " << error.message()
-		          << std::endl;
-		exit(EXIT_FAILURE);
+		if (debug) {
+			std::cerr << "Error while handling signal: " << error.message()
+			          << std::endl;
+			exit(EXIT_FAILURE);
+		}
 	}
-	std::cerr << "Signal " << signal_number << " received." << std::endl;
-	std::cerr << "Thanks for using the client!" << std::endl;
-
+	if (debug) {
+		std::cerr << " Signal " << signal_number << " received." << std::endl;
+		std::cerr << "Thanks for using the client! Closing." << std::endl;
+	}
 	exit(EXIT_SUCCESS);
 }
 
@@ -40,10 +49,14 @@ public:
 		io_context.run();
 	}
 
-private:
-	void initialize();
+	virtual ~Client();
 
+private:
 	void exit_program(int status);
+
+	void close_sockets();
+
+	void initialize();
 
 /* Funkcje do połączenia GUI -> CLIENT -> SERVER */
 
@@ -82,16 +95,25 @@ private:
 	void do_send_gui(size_t send_length);
 
 private:
-	size_t received_length{0};
+	/* Parametry klienta. */
 	ClientParameters parameters;
+	/* Informacje dotyczące rozgrywki. */
 	GameInfo game_info;
+	/*Rozmiar odebranego pakietu. */
+	size_t received_length{0};
+	/* Bufor do obsługi łączenia GUI -> SERVER */
 	Buffer gui_to_server_buffer;
+	/* Bufor do obsługi łączenia SERVER -> GUI */
 	Buffer server_to_gui_buffer;
+	/* Zmienna potrzebna do zachowania obsługi asynchroniczności. */
 	boost::asio::io_context io_context;
+	/* Gniazda */
 	std::optional<udp::socket> gui_socket;
 	std::optional<tcp::socket> server_socket;
+	/* Endpointy */
 	std::optional<udp::endpoint> gui_endpoints;
 	std::optional<tcp::endpoint> server_endpoints;
+	/* Sygnały do obsługi */
 	boost::asio::signal_set signals{io_context, SIGINT};
 };
 

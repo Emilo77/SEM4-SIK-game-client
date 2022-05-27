@@ -1,7 +1,11 @@
 #ifndef ZADANIE02_BUFFER_H
 #define ZADANIE02_BUFFER_H
 
-#define BUFFER_SIZE 65535
+/* Początkowa wielkość bufora, aby móc odebrać największy możliwy pakiet TCP */
+#define MAX_PACKAGE_SIZE 65535
+/* Początkowa wielkość bufora do obsługi GUI -> SERWER, są tam wysyłane komunikaty
+ * o małej wielkości, zatem ustawiamy mniejszy rozmiar bufora. */
+#define SMALL_BUFFER_SIZE 64
 
 #include "ClientParameters.h"
 #include "Utils.h"
@@ -13,7 +17,7 @@
 
 using std::string;
 
-struct InvalidMessage: public std::exception {
+struct InvalidMessage : public std::exception {
 	[[nodiscard]] const char *what() const noexcept override {
 		return "Incorrect message";
 	}
@@ -142,8 +146,12 @@ private:
 	/* Przywrócenie indeksu przed wysyłaniem nowej wiadomości */
 	void reset_send_index() { send_index = 0; }
 
-	/* Przywrócenie indeksu przed wysyłaniem nowej wiadomości */
-	void set_shift(size_t value) { shift_index = value; }
+	/* Ustawienie indeksu na odbiór danych z funkcji Receive.
+	 * Jeżeli pakiet ma szanse się nie zmieścić, zwiększamy rozmiar kontenera. */
+	void set_shift(size_t value) {
+		shift_index = value;
+		adapt_size();
+	}
 
 	/* Zwrócenie wielkości zapisanej wiadomości do bufora */
 	[[nodiscard]] size_t get_send_size() const { return send_index; }
@@ -151,12 +159,13 @@ private:
 	/* Zwrócenie wielkości odebranej wiadomości z bufora */
 	[[nodiscard]] size_t get_read_size() const { return read_index; }
 
-	/* Zwrócenie wielkości odebranej wiadomości z bufora */
-	[[nodiscard]] size_t get_shift() const { return shift_index; }
-
 public:
+	/* Wstępne ustawienie wielkości kontenerów. */
+	void initialize(size_t size);
 
-	void initialize();
+	/* Wstępne ustawienie wielkości kontenerów. */
+	void adapt_size();
+
 	/* Wstawianie wiadomości wysyłanej do serwera */
 	size_t insert_msg_to_server(ClientMessageToServer &message);
 
@@ -176,14 +185,6 @@ public:
 	/* Referencja do bufora wysyłającego komunikaty */
 	char *get_send() { return &send_buffer[0]; }
 
-	void print(size_t size) {
-		std::cerr << "size: " << size << std::endl;
-		for (size_t i = 0; i < size; i++) {
-			std::cerr << (int) receive_buffer[i] << " | ";
-		}
-		std::cerr << std::endl;
-	}
-
 private:
 	std::vector<char> receive_buffer;
 	std::vector<char> send_buffer;
@@ -191,7 +192,6 @@ private:
 	size_t read_index{0};
 	size_t shift_index{0};
 	size_t end_of_data_index{0};
-	size_t received{0};
 };
 
 

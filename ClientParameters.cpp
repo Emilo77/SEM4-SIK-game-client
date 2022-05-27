@@ -115,13 +115,8 @@ void ClientParameters::check_parameters() {
 		compare_address();
 
 		/* Dzielimy adresy na hosty i porty, zapisujemy je w parametrach. */
-		std::string server_port_str, display_port_str;
-		split_ip(server_address, server_host, server_port_str);
-		split_ip(gui_address, gui_host, display_port_str);
-
-		server_port = boost::lexical_cast<uint16_t>(server_port_str);
-		gui_port = boost::lexical_cast<uint16_t>(display_port_str);
-
+		split_ip(server_address, server_host, server_port);
+		split_ip(gui_address, gui_host, gui_port);
 
 	}
 	catch (std::exception &e) {

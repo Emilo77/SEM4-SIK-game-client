@@ -21,11 +21,15 @@ private:
 public:
 	std::string gui_address;
 	std::string server_address;
+	/* Hosty */
 	std::string gui_host;
 	std::string server_host;
-	uint16_t gui_port{0};
-	uint16_t server_port{0};
+	/* Przechowujemy poprawne porty w napisach, ponieważ do wyznaczania
+	 * endpointów w bibliotece Boost podaje się porty w takiej postaci. */
+	std::string gui_port;
+	std::string server_port;
 	std::string player_name;
+	/* Port do nasłuchiwania komunikatów od GUI. */
 	uint16_t port{0};
 
 	ClientParameters(int argc, char *argv[]) : argc(argc), argv(argv) {

@@ -1,34 +1,38 @@
 #include "Client.h"
 
 void Client::exit_program(int status) {
-	/* Zamykamy gniazdo serwera, jeżeli jest otwarte. */
-	if (server_socket.value().is_open()) {
-		server_socket.value().close();
-	}
-	/* Zamykamy gniazdo gui, jeżeli jest otwarte. */
-	if (gui_socket.value().is_open()) {
-		gui_socket.value().close();
-	}
+	/* Zamykamy gniazda. */
+	close_sockets();
 	/* Kończymy działanie programu z odpowiednim kodem wyjścia. */
 	exit(status);
 }
 
 
+void Client::close_sockets() {
+	/* Zamykamy gniazdo serwera, jeżeli istnieje i jest otwarte. */
+	if (server_socket.has_value() && server_socket.value().is_open()) {
+		server_socket.value().close();
+	}
+	/* Zamykamy gniazdo gui, jeżeli istnieje i jest otwarte. */
+	if (gui_socket.has_value() && gui_socket.value().is_open()) {
+		gui_socket.value().close();
+	}
+}
+
+
 void Client::initialize() {
-	server_to_gui_buffer.initialize();
-	gui_to_server_buffer.initialize();
+	server_to_gui_buffer.initialize(MAX_PACKAGE_SIZE);
+	gui_to_server_buffer.initialize(SMALL_BUFFER_SIZE);
 	try {
 		/* Wyznaczamy endpointy GUI na podstawie hosta i portu GUI. */
 		udp::resolver gui_resolver(io_context);
 		udp::endpoint new_gui_endpoints = *gui_resolver.resolve(
-				parameters.gui_host,
-				boost::lexical_cast<std::string>(parameters.gui_port));
+				parameters.gui_host, parameters.gui_port);
 
 		/* Wyznaczamy endpointy serwera na podstawie hosta i portu serwera. */
 		tcp::resolver server_resolver(io_context);
 		tcp::endpoint new_server_endpoints = *server_resolver.resolve(
-				parameters.server_host,
-				boost::lexical_cast<std::string>(parameters.server_port));
+				parameters.server_host, parameters.server_port);
 
 		gui_endpoints.emplace(new_gui_endpoints);
 		server_endpoints.emplace(new_server_endpoints);
@@ -36,9 +40,11 @@ void Client::initialize() {
 		/* Gniazdo GUI będzie nasłuchiwać na porcie podanym w parametrach */
 		gui_socket.emplace(io_context,
 		                   udp::endpoint(udp::v6(), parameters.port));
-		std::cerr << "GUI socket listening on port " << parameters.port
-		          << std::endl;
 		server_socket.emplace(io_context);
+		if (debug) {
+			std::cerr << "GUI socket listening on port " << parameters.port
+			          << std::endl;
+		}
 
 		/* Łączymy gniazda z odpowiednimi endpointami */
 		server_socket.value().connect(server_endpoints.value());
@@ -48,10 +54,13 @@ void Client::initialize() {
 	}
 		/* W przypadku błędu wypisujemy błąd i kończymy działanie programu */
 	catch (std::exception &e) {
-		std::cerr << "Exception: " << e.what() << "\n";
+		if (debug) {
+			std::cerr << "Exception: " << e.what() << "\n";
+		}
 		exit_program(EXIT_FAILURE);
 	}
 }
+
 
 std::optional<size_t> Client::handle_gui_message() {
 	/* Wyciągamy i przetwarzamy wiadomość z bufora. */
@@ -66,10 +75,13 @@ std::optional<size_t> Client::handle_gui_message() {
 
 	} catch (InvalidMessage &e) {
 		/* Jeżeli wiadomość od GUI przyszła w niepoprawnym formacie, ignorujemy ją. */
-		std::cerr << "Invalid message received from GUI. Ignoring." << "\n";
+		if (debug) {
+			std::cerr << "GUI:" << e.what() << "\n";
+		}
 		return {};
 	}
 }
+
 
 ClientMessageToServer
 Client::prepare_msg_to_server(GuiMessageToClient &message) {
@@ -98,11 +110,12 @@ Client::prepare_msg_to_server(GuiMessageToClient &message) {
 	return new_message;
 }
 
+
 void Client::do_receive_from_gui() {
 	/* Odbieramy wiadomość od gui i wykonujemy kod w funkcji lambda. */
-	gui_socket.value().async_receive(
+	gui_socket.value().async_receive_from(
 			boost::asio::buffer(gui_to_server_buffer.get_receive(),
-			                    BUFFER_SIZE),
+			                    SMALL_BUFFER_SIZE), gui_endpoints.value(),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
 				if (!ec) {
@@ -111,12 +124,16 @@ void Client::do_receive_from_gui() {
 				} else {
 					/* W przypadku błędu z połączeniem wypisujemy błąd
 					 * i kończymy działanie programu. */
-					std::cerr << "Error receiving from gui: " << ec.message()
-					          << std::endl;
+					if (debug) {
+						std::cerr << "Error receiving from gui: "
+						          << ec.message()
+						          << std::endl;
+					}
 					exit_program(EXIT_FAILURE);
 				}
 			});
 }
+
 
 void Client::do_handle_gui() {
 	/* Obsługujemy wiadomość otrzymaną od GUI i na jej podstawie
@@ -142,12 +159,15 @@ void Client::do_send_server(size_t send_length) {
 				} else {
 					/* W przypadku błędu z połączeniem wypisujemy błąd
 					 * i kończymy działanie programu. */
-					std::cerr << "Error sending to server: " << ec.message()
-					          << std::endl;
+					if (debug) {
+						std::cerr << "Error sending to server: " << ec.message()
+						          << std::endl;
+					}
 					exit_program(EXIT_FAILURE);
 				}
 			});
 }
+
 
 std::optional<size_t> Client::handle_message_from_server() {
 
@@ -173,16 +193,14 @@ std::optional<size_t> Client::handle_message_from_server() {
 
 	} catch (IncompleteMessage &e) {
 		/* Jeżeli wiadomość nie jest kompletna, oczekujemy reszty. */
-		std::cerr << "Message from server is incomplete: " << e.what()
-		          << std::endl;
 		return {};
 	} catch (InvalidMessage &e) {
 		/* Jeżeli wiadomość jest niepoprawna, ignorujemy ją. */
-		std::cerr << "Error: received message from server is not valid.\n";
+		if (debug) {
+			std::cerr << "Server: " << e.what() << std::endl;
+		}
 		exit_program(EXIT_FAILURE);
 	}
-
-
 	return {};
 }
 
@@ -205,42 +223,38 @@ Client::prepare_msg_to_gui(ServerMessageToClientType type) {
 	return reply;
 }
 
+
 void Client::do_receive_from_server() {
 
 	/* Odbieramy wiadomość z serwera. */
 	server_socket.value().async_receive(
 			boost::asio::buffer(server_to_gui_buffer.get_receive(),
-			                    BUFFER_SIZE),
+			                    MAX_PACKAGE_SIZE),
 			[this](boost::system::error_code ec,
 			       std::size_t length) {
+
 				if (!ec) {
-
-					std::cerr << "Otrzymany pakiet:" << std::endl;
-					for (size_t i = 0; i < length; i++) {
-						std::cerr << (int) server_to_gui_buffer.get_receive()[i]
-						          << " | ";
-					}
-					std::cerr << std::endl;
-
 					received_length = length;
-					std::cerr << "Stan buffera po wpisaniu pakietu: "
-					          << std::endl;
-					server_to_gui_buffer.print(80);
-
 					do_handle_server();
+
 				} else {
 					/* W przypadku błędu z połączeniem wypisujemy błąd
                     * i kończymy działanie programu. */
-					std::cerr << "Error receiving from server: " << ec.message()
-					          << std::endl;
+					if (debug) {
+						std::cerr << "Error receiving from server: "
+						          << ec.message()
+						          << std::endl;
+					}
 					exit_program(EXIT_FAILURE);
 				}
 			});
 }
 
+
 void Client::do_handle_server() {
-	/* Obsługujemy otrzymaną od serwera wiadomość. Na jej podstawie
-	 * aktualizujemy stan gry oraz wysyłamy wiadomość zwrotną do GUI. */
+	/* Obsługujemy otrzymaną od serwera wiadomości. Na ich podstawie
+	 * aktualizujemy stan gry oraz wysyłamy wiadomość zwrotną do GUI.
+	 * Jeżeli wiadomość jest niepełna, oczekujemy, oczekujemy na resztę. */
 	auto send = handle_message_from_server();
 	if (send.has_value()) {
 		do_send_gui(send.value());
@@ -249,6 +263,7 @@ void Client::do_handle_server() {
 	}
 
 }
+
 
 void Client::do_send_gui(size_t send_length) {
 	/* Wysyłamy wiadomość do GUI. */
@@ -262,14 +277,22 @@ void Client::do_send_gui(size_t send_length) {
 				} else {
 					/* W przypadku błędu z połączeniem wypisujemy błąd
 					* i kończymy działanie programu. */
-					std::cerr << "Error sending to GUI: " << ec.message()
-					          << std::endl;
+					if (debug) {
+						std::cerr << "Error sending to GUI: " << ec.message()
+						          << std::endl;
+					}
 					exit_program(EXIT_FAILURE);
 				}
 			});
 }
 
+Client::~Client() {
+	close_sockets();
+}
+
+
 int main(int argc, char *argv[]) {
+	std:: cerr << "Client started" << std::endl;
 	ClientParameters parameters(argc, argv);
 	Client client(parameters);
 	client.run();

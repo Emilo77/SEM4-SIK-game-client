@@ -1,25 +1,29 @@
 #include "Buffer.h"
 
-static void check_direction(uint8_t direction) {
+static inline void check_direction(uint8_t direction) {
+	/* Jeżeli typ Direction jest niepoprawny, rzucamy wyjątek */
 	if (direction > Direction::Left) {
 		throw InvalidMessage();
 	}
 }
 
-static void check_gui_message_type(uint8_t type) {
+static inline void check_gui_message_type(uint8_t type) {
+	/* Jeżeli typ GuiMessageToClientType jest niepoprawny, rzucamy wyjątek */
 	if (type > GuiMessageToClientType::MoveGui) {
 		throw InvalidMessage();
 	}
 }
 
-static void check_server_message_type(uint8_t type) {
+static inline void check_server_message_type(uint8_t type) {
+	/* Jeżeli typ ServerMessageToClientType jest niepoprawny, rzucamy wyjątek */
 	if (type > ServerMessageToClientType::GameEnded) {
 		throw InvalidMessage();
 	}
 }
 
-void Buffer::check_if_message_incomplete(size_t variable) const {
-	if (read_index + variable > end_of_data_index) {
+void Buffer::check_if_message_incomplete(size_t size) const {
+	/* Jeżeli czytana wiadomość wykroczyłaby poza koniec danych, rzucamy wyjątek*/
+	if (read_index + size > end_of_data_index) {
 		throw IncompleteMessage();
 	}
 }
@@ -450,13 +454,22 @@ void Buffer::send_game(GamePlay &message) {
 	insert_map_scores(message.scores);
 }
 
-void Buffer::initialize() {
-	receive_buffer.resize(BUFFER_SIZE, 0);
-	send_buffer.resize(BUFFER_SIZE, 0);
+void Buffer::initialize(size_t size) {
+	receive_buffer.resize(size, 0);
+	send_buffer.resize(size, 0);
+}
+
+void Buffer::adapt_size() {
+	if (shift_index + MAX_PACKAGE_SIZE > receive_buffer.size()) {
+		receive_buffer.resize(receive_buffer.size() + MAX_PACKAGE_SIZE, 0);
+	}
 }
 
 size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 	reset_send_index();
+
+	/* W zależności od typu wiadomości wywołujemy konkretną funkcję
+	 * do jej wstawiania do bufora. */
 	switch (message.type) {
 		case ClientMessageToServerType::JoinServer:
 			insert_join(std::get<string>(message.data));
@@ -476,16 +489,24 @@ size_t Buffer::insert_msg_to_server(ClientMessageToServer &message) {
 
 std::optional<ServerMessageToClient>
 Buffer::receive_msg_from_server(size_t received_size) {
-	end_of_data_index += received_size;
+	/* Resetujemy index do czytania danych z bufora. */
 	reset_read_index();
+
+	/* Zwiększamy index końca danych o otrzymaną ilość danych. */
+	end_of_data_index += received_size;
+
+	/* Inicjujemy potrzebne zmienne do przechowania wiadomości. */
 	auto serverMessage = std::optional<ServerMessageToClient>();
 	uint8_t message;
 	std::variant<struct Hello, struct AcceptedPlayer,
 			struct GameStarted, struct Turn, struct GameEnded> data;
 	try {
+		/* Odbieramy i sprawdzamy typ wiadomości. */
 		receive(message);
 		check_server_message_type(message);
 
+		/* W zależności od typu wywołujemy konkretne funkcje
+		 * do wyciągnięcia danych z bufora */
 		switch ((ServerMessageToClientType) message) {
 			case Hello:
 				data = receive_hello();
@@ -509,14 +530,21 @@ Buffer::receive_msg_from_server(size_t received_size) {
 				break;
 		}
 
+		/* Jeżeli wiadomość okazała się niekompletna, przesuwamy
+		 * index odbierania danych. Przekazujemy wyjątki dalej. */
 	} catch (IncompleteMessage &e) {
 		set_shift(end_of_data_index);
 		throw e;
+	} catch (InvalidMessage &e) {
+		throw e;
 	}
 
+	/* Jeżeli udało się wczytać wiadomość z danych z bufora,
+	 * przesuwamy index końca danych i index odbierania danych. */
 	end_of_data_index -= get_read_size();
 	set_shift(end_of_data_index);
 
+	/* Przesuwamy dane o ilość, jaką wczytaliśmy. */
 	for (size_t i = 0; i < end_of_data_index; i++) {
 		receive_buffer[i] = receive_buffer[i + get_read_size()];
 	}
@@ -526,6 +554,7 @@ Buffer::receive_msg_from_server(size_t received_size) {
 
 size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {
 	reset_send_index();
+	/* Wywołujemy odpowiednią funkcję w zależności od typu wiadomości. */
 	switch (drawMessage.state) {
 		case LobbyState:
 			send_lobby(std::get<Lobby>(drawMessage.data));
@@ -538,33 +567,40 @@ size_t Buffer::insert_msg_to_display(ClientMessageToDisplay &drawMessage) {
 }
 
 GuiMessageToClient Buffer::receive_msg_from_gui(size_t received_size) {
-	end_of_data_index = BUFFER_SIZE;
+	/*Resetujemy index do czytania danych z bufora. */
 	reset_read_index();
+	/* Odbiór odbiera się po UDP oraz odbierane pakiety są krótkie,
+	 * zatem nie musimy sprawdzać, czy pakiety doszły niepełne. */
+	end_of_data_index = MAX_PACKAGE_SIZE;
 
-	auto message = std::optional<GuiMessageToClient>();
 	uint8_t message_type;
 	uint8_t direction;
 
 	try {
+		/* Odczytujemy typ otrzymanej wiadomości i sprawdzamy jego poprawność. */
 		receive(message_type);
 		check_gui_message_type(message_type);
+
 		if (message_type == GuiMessageToClientType::MoveGui) {
+			/* Jeżeli otrzymaliśmy komunikat Move, odczytujemy Direction
+			 * i sprawdzamy, czy typ Direction jest poprawny. */
 			receive(direction);
 			check_direction(direction);
 
 			return {(GuiMessageToClientType) message_type,
-			                          static_cast<Direction>(direction)};
+			        static_cast<Direction>(direction)};
 		}
 
+		/* Jeżeli nie odczytaliśmy dokładnie rozmiaru otrzymanych danych,
+		 * traktujemy wiadomość jako nieprawidłową i rzucamy wyjątek. */
 		if (get_read_size() != received_size) {
 			throw InvalidMessage();
 		}
 
-		std:: cerr << "Poprawna wiadomość GUI" << std::endl;
 		return GuiMessageToClient((GuiMessageToClientType) message_type);
 
+		/* W przypadku złapania wyjątków rzucamy wyjątek niepoprawnej wiadomości. */
 	} catch (InvalidMessage &e) {
-		std:: cerr << "Złapało wyjątek " << std::endl;
 		throw e;
 	} catch (IncompleteMessage &e) {
 		throw InvalidMessage();
