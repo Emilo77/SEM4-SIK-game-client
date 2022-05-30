@@ -133,6 +133,7 @@ void GameInfo::apply_GameEnded(struct GameEnded &message) {
 	scores = message.scores;
 	/* Zmieniamy stan na Lobby. */
 	change_game_state(GameState::LobbyState);
+	board.reset(size_x, size_y);
 	clear_containers();
 }
 
